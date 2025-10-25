@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="style.css" />
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
-    /* Garantir alinhamento à direita no Peso da tabela, mesmo sem CSS externo */
+    /* Garantir alinhamento à direita no Peso da tabela */
     #material-table td.ppm, #material-table th.ppm { text-align: right; }
   </style>
 </head>
@@ -24,7 +24,6 @@
         <p class="muted">Importe sua planilha <strong>CODIGO | DESCRIÇÃO | PESO POR METRO</strong>. Após importar, a área e a listagem ficam ocultas.</p>
       </div>
 
-      <!-- Import (colapsável) -->
       <details id="importArea" open>
         <summary style="cursor:pointer;margin:0 0 10px 0;">📄 Importar Excel (.xlsx)</summary>
         <div class="grid">
@@ -39,7 +38,6 @@
         </div>
       </details>
 
-      <!-- Cadastro manual -->
       <form id="material-form" class="grid grid-4">
         <div class="field">
           <label for="matCodigo">Código</label>
@@ -47,7 +45,7 @@
         </div>
         <div class="field">
           <label for="matName">Descrição</label>
-          <input id="matName" type="text" placeholder='Ex.: L 25,4 x 25,4 x 3,18mm' />
+          <input id="matName" type="text" placeholder='Ex.: L 25,4 X 25,4 X 4,8 H' />
         </div>
         <div class="field">
           <label for="matPpm">Peso por metro (kg/m) — exibir exatamente como digitado</label>
@@ -113,7 +111,7 @@
       </div>
 
       <div class="result" id="resUnico">
-        <div><span>Peso por metro (da planilha/digitado):</span><strong id="ppmView">—</strong></div>
+        <div><span>Peso por metro (texto da planilha/digitado):</span><strong id="ppmView">—</strong></div>
         <div><span>Peso do comprimento:</span><strong id="pesoComprimentoView">—</strong></div>
         <div><span>Peso total (peças):</span><strong id="pesoTotalView">—</strong></div>
       </div>
@@ -177,7 +175,7 @@
   </main>
 
   <footer class="footer">
-    <small>Dark — v2.0 (PPM texto intacto • D1 • sem fallback • resultado BR)</small>
+    <small>Dark — v2.1 (PPM texto puro • D1 • sem fallback • resultado BR)</small>
   </footer>
 
   <script src="script.js"></script>
