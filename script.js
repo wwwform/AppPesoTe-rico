@@ -297,6 +297,7 @@ function setupFardos(){
     $('#totalHighlight').textContent='Total geral: 0,000 kg';
   };
   $('#selMaterialFardo').onchange=()=>{ updateUIForMaterialFardos(); calcFardos(); };
+  $('#btnExportExcel').onclick=exportFardosExcel;
 }
 
 // BUSCA POR CÓDIGO
@@ -311,6 +312,97 @@ function setupSearch(){
   }
   $('#searchCodigo').oninput=e=>apply(e.target.value.trim());
   $('#searchCodigoFardos').oninput=e=>apply(e.target.value.trim());
+}
+
+// === EXPORTAÇÃO EXCEL (X2, D3) ===
+function exportFardosExcel(){
+  const m=currentMaterialFardos();
+  if(!m){ alert('Selecione um material nos fardos.'); return; }
+
+  const chapa = isChapa(m.name);
+  const rows = [['#','Comp (m)'].concat(chapa?['Larg (m)']:[]).concat(['Peças','Peso Unit (kg)','Peso Total (kg)','Código','Descrição','PPM'])];
+
+  let totalGeral = 0;
+  let idx = 1;
+  $$('#fardos-table tbody tr').forEach(tr=>{
+    const comp = parseBR_num(tr.querySelector('.f-comp')?.value);
+    const pecas = parseBR_num(tr.querySelector('.f-pecas')?.value);
+    let pesoUnit = 0;
+    let larg = null;
+    if(chapa){
+      larg = parseBR_num(tr.querySelector('.f-larg')?.value);
+      pesoUnit = (comp * larg) * m.ppm;
+    }else{
+      pesoUnit = comp * m.ppm;
+    }
+    const pesoTotal = pesoUnit * pecas;
+    totalGeral += pesoTotal;
+
+    const base = [idx, comp];
+    if(chapa) base.push(larg);
+    base.push(pecas, pesoUnit, pesoTotal, m.code||'', m.name||'', m.ppm);
+    rows.push(base);
+    idx++;
+  });
+
+  // TOTAL GERAL
+  const totalRow = ['TOTAL GERAL'];
+  // pad empty cells until reach Peso Total column
+  const offset = chapa ? 4 : 3; // after #, comp,(larg), peças
+  for(let i=0;i<offset;i++) totalRow.push('');
+  totalRow.push(totalGeral); // Peso Total (kg)
+  totalRow.push('','',''); // Código, Descrição, PPM vazios
+  rows.push(totalRow);
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Fardos');
+
+  // Formatação de número D3 (0,000) — community edition permite 'z' (mask)
+  const range = XLSX.utils.decode_range(ws['!ref']);
+  // Descobrir índices das colunas
+  // 0:#, 1:Comp, (2:Larg), (3|2):Peças, etc.
+  function col(c){ return XLSX.utils.encode_col(c); }
+  function addr(r,c){ return col(c)+(r+1); }
+
+  const colComp = 1;
+  const colLarg = chapa ? 2 : null;
+  const colPecas = chapa ? 3 : 2;
+  const colPesoUnit = chapa ? 4 : 3;
+  const colPesoTotal = chapa ? 5 : 4;
+  const colPPM = chapa ? 8 : 7;
+
+  for(let r=1; r<=rows.length-2; r++){ // linhas de dados (ignora header=0 e total=last)
+    // comp
+    const a1 = addr(r, colComp);
+    if(ws[a1]) ws[a1].t='n', ws[a1].z='0.000';
+    // larg
+    if(chapa){
+      const a2 = addr(r, colLarg);
+      if(ws[a2]) ws[a2].t='n', ws[a2].z='0.000';
+    }
+    // peças (inteiro)
+    const ap = addr(r, colPecas);
+    if(ws[ap]) ws[ap].t='n', ws[ap].z='0';
+    // pesos
+    const au = addr(r, colPesoUnit);
+    const at = addr(r, colPesoTotal);
+    if(ws[au]) ws[au].t='n', ws[au].z='0.000';
+    if(ws[at]) ws[at].t='n', ws[at].z='0.000';
+    // ppm
+    const apm = addr(r, colPPM);
+    if(ws[apm]) ws[apm].t='n', ws[apm].z='0.000';
+  }
+  // formatar total geral (última linha)
+  const last = rows.length-1;
+  const atot = addr(last, colPesoTotal);
+  if(ws[atot]) ws[atot].t='n', ws[atot].z='0.000';
+
+  // OBS: estilização (cor verde) não é suportada na versão community do SheetJS.
+  // Para destacar, deixamos "TOTAL GERAL" em caps; no Excel você pode aplicar uma Regra Rápida de realce, se desejar.
+
+  const filename = `fardos_${(m.code||'material')}.xlsx`.replace(/[^\w.-]+/g,'_');
+  XLSX.writeFile(wb, filename);
 }
 
 // INIT
