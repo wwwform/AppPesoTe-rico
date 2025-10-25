@@ -1,5 +1,5 @@
 // ====== Storage ======
-const LS_KEY = 'materiais_ppm_v1';
+const LS_KEY = 'materiais_ppm_v2'; // nova versão (guarda codigo + descricao + ppm)
 
 function loadMaterials() {
   try {
@@ -16,32 +16,29 @@ function saveMaterials(arr) {
 
 // ====== Estado ======
 let materials = loadMaterials();
-if (materials.length === 0) {
-  // alguns exemplos iniciais
-  materials = [
-    { id: crypto.randomUUID(), name: 'Barra 1" Aço 1020', ppm: 2.0000 },
-    { id: crypto.randomUUID(), name: 'Tubo 3/4" Inox', ppm: 1.3500 },
-    { id: crypto.randomUUID(), name: 'Perfil U 100', ppm: 8.7500 },
-  ];
-  saveMaterials(materials);
-}
 
 // ====== Util ======
 const $ = sel => document.querySelector(sel);
 const $$ = sel => Array.from(document.querySelectorAll(sel));
 
-function toNumber(value) {
-  const v = String(value).replace(',', '.');
-  const n = Number(v);
+function parseBRDecimal(str) {
+  if (str === null || str === undefined) return 0;
+  const s = String(str).trim().replace(/\./g, '').replace(',', '.');
+  const n = Number(s);
   return Number.isFinite(n) ? n : 0;
 }
 
-function fmt(n, dec = 4) {
-  return n.toLocaleString('pt-BR', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+function fmtBR(n, dec = 3) {
+  return Number(n).toLocaleString('pt-BR', { minimumFractionDigits: dec, maximumFractionDigits: dec });
 }
 
 function getMaterialById(id) {
   return materials.find(m => m.id === id) || null;
+}
+
+function normalizeHeader(h) {
+  if (!h) return '';
+  return String(h).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim();
 }
 
 // ====== UI: Tabelas/Selects ======
@@ -51,25 +48,26 @@ function renderMaterialTable() {
   materials.forEach(m => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
+      <td>${m.code || ''}</td>
       <td>${m.name}</td>
-      <td>${fmt(m.ppm, 4)}</td>
+      <td>${fmtBR(m.ppm)}</td>
       <td class="center">
-        <button class="btn" data-edit="${m.id}">Editar</button>
+        <button class="btn outline" data-edit="${m.id}">Editar</button>
         <button class="btn danger" data-del="${m.id}">Excluir</button>
       </td>
     `;
     tbody.appendChild(tr);
   });
 
-  // ações
   tbody.querySelectorAll('button[data-edit]').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = btn.getAttribute('data-edit');
       const m = getMaterialById(id);
       if (!m) return;
+      $('#matCodigo').value = m.code || '';
       $('#matName').value = m.name;
-      $('#matPpm').value = String(m.ppm);
-      $('#material-form').dataset.editing = id; // modo edição
+      $('#matPpm').value = fmtBR(m.ppm);
+      $('#material-form').dataset.editing = id;
       $('#material-form').querySelector('button[type="submit"]').textContent = 'Salvar';
     });
   });
@@ -81,7 +79,7 @@ function renderMaterialTable() {
       saveMaterials(materials);
       renderMaterialTable();
       renderMaterialSelects();
-      renderFardosTotal(); // recalcula se necessário
+      renderFardosTotal();
     });
   });
 }
@@ -92,37 +90,38 @@ function renderMaterialSelects() {
     sel.innerHTML = '';
     materials.forEach(m => {
       const opt = document.createElement('option');
+      const label = `${m.code ? (m.code + ' – ') : ''}${m.name} — ${fmtBR(m.ppm)} kg/m`;
       opt.value = m.id;
-      opt.textContent = `${m.name} — ${fmt(m.ppm, 4)} kg/m`;
+      opt.textContent = label;
       sel.appendChild(opt);
     });
   });
 }
 
-// ====== Cadastro: eventos ======
+// ====== Cadastro manual + Import ======
 function setupMaterialForm() {
   const form = $('#material-form');
   form.addEventListener('submit', (e) => {
     e.preventDefault();
+    const code = $('#matCodigo').value.trim();
     const name = $('#matName').value.trim();
-    const ppm = toNumber($('#matPpm').value);
+    const ppm = parseBRDecimal($('#matPpm').value);
 
-    if (!name) { alert('Informe o nome do material.'); return; }
+    if (!name) { alert('Informe a descrição.'); return; }
     if (ppm <= 0) { alert('Informe um peso por metro maior que zero.'); return; }
 
     const editingId = form.dataset.editing;
     if (editingId) {
-      // salvar edição
       const idx = materials.findIndex(m => m.id === editingId);
       if (idx >= 0) {
+        materials[idx].code = code || '';
         materials[idx].name = name;
         materials[idx].ppm = ppm;
       }
       delete form.dataset.editing;
       form.querySelector('button[type="submit"]').textContent = 'Adicionar';
     } else {
-      // novo
-      materials.unshift({ id: crypto.randomUUID(), name, ppm });
+      materials.unshift({ id: crypto.randomUUID(), code: code || '', name, ppm });
     }
 
     saveMaterials(materials);
@@ -136,6 +135,78 @@ function setupMaterialForm() {
     delete form.dataset.editing;
     form.querySelector('button[type="submit"]').textContent = 'Adicionar';
   });
+
+  // Import Excel
+  $('#btnImportExcel').addEventListener('click', () => {
+    const file = $('#fileExcel').files[0];
+    if (!file) { alert('Selecione um arquivo .xlsx'); return; }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target.result);
+        const wb = XLSX.read(data, { type: 'array' });
+        const wsName = wb.SheetNames[0];
+        const ws = wb.Sheets[wsName];
+        const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false });
+
+        if (!rows.length) { alert('Planilha vazia.'); return; }
+
+        // detectar cabeçalho
+        const header = rows[0].map(h => normalizeHeader(h));
+        let idxCod = -1, idxDesc = -1, idxPpm = -1;
+
+        header.forEach((h, i) => {
+          if (h.includes('CODIGO') || h.includes('CÓDIGO')) idxCod = i;
+          if (h.includes('DESCRICAO') || h.includes('DESCRIÇÃO') || h === 'DESCR') idxDesc = i;
+          if (h.includes('PESO') && h.includes('METRO')) idxPpm = i;
+        });
+
+        let startRow = 1;
+        // se não reconheceu cabeçalho, assume A|B|C sem header
+        if (idxDesc === -1 || idxPpm === -1) {
+          idxCod = 0; idxDesc = 1; idxPpm = 2;
+          startRow = 0;
+        }
+
+        const imported = [];
+        for (let r = startRow; r < rows.length; r++) {
+          const row = rows[r];
+          if (!row || row.length === 0) continue;
+          const code = row[idxCod] != null ? String(row[idxCod]).trim() : '';
+          const name = row[idxDesc] != null ? String(row[idxDesc]).trim() : '';
+          const ppmRaw = row[idxPpm] != null ? String(row[idxPpm]).trim() : '';
+          if (!name || !ppmRaw) continue;
+          const ppm = parseBRDecimal(ppmRaw);
+          if (!(ppm > 0)) continue;
+
+          imported.push({ id: crypto.randomUUID(), code, name, ppm });
+        }
+
+        if (!imported.length) { alert('Nenhuma linha válida encontrada.'); return; }
+
+        // mescla com existentes (simples: concatena no topo)
+        materials = [...imported, ...materials];
+        saveMaterials(materials);
+        renderMaterialTable();
+        renderMaterialSelects();
+        alert(`Importados ${imported.length} materiais com sucesso.`);
+      } catch (err) {
+        console.error(err);
+        alert('Falha ao ler o Excel. Verifique o formato.');
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  });
+
+  // Export JSON (apoio)
+  $('#btnExportJSON').addEventListener('click', () => {
+    const blob = new Blob([JSON.stringify(materials, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'materiais.json'; a.click();
+    URL.revokeObjectURL(url);
+  });
 }
 
 // ====== Cálculo Rápido ======
@@ -144,25 +215,24 @@ function calcUnico() {
   const m = getMaterialById(selId);
   if (!m) { alert('Cadastre/seleciona um material.'); return; }
 
-  const comp = toNumber($('#inComprimento').value);
-  const pecas = Math.floor(toNumber($('#inPecas').value));
+  const comp = parseBRDecimal($('#inComprimento').value);
+  const pecas = Math.max(0, Math.floor(parseBRDecimal($('#inPecas').value)));
 
   const pesoComp = comp * m.ppm;          // 1) comprimento * ppm
   const pesoTotal = pesoComp * pecas;     // 2) * peças
 
-  $('#ppmView').textContent = `${fmt(m.ppm, 4)} kg/m`;
-  $('#pesoComprimentoView').textContent = `${fmt(pesoComp, 4)} kg`;
-  $('#pesoTotalView').textContent = `${fmt(pesoTotal, 4)} kg`;
+  $('#ppmView').textContent = `${fmtBR(m.ppm)} kg/m`;
+  $('#pesoComprimentoView').textContent = `${fmtBR(pesoComp)} kg`;
+  $('#pesoTotalView').textContent = `${fmtBR(pesoTotal)} kg`;
 }
 
 function setupCalcUnico() {
   $('#btnCalcUnico').addEventListener('click', calcUnico);
-  // recalcula ao trocar material (se já houver valores)
   $('#selMaterial').addEventListener('change', () => {
     if ($('#inComprimento').value || $('#inPecas').value) calcUnico();
     else {
       const m = getMaterialById($('#selMaterial').value);
-      $('#ppmView').textContent = m ? `${fmt(m.ppm,4)} kg/m` : '—';
+      $('#ppmView').textContent = m ? `${fmtBR(m.ppm)} kg/m` : '—';
       $('#pesoComprimentoView').textContent = '—';
       $('#pesoTotalView').textContent = '—';
     }
@@ -174,9 +244,9 @@ function makeFardoRow(i) {
   const tr = document.createElement('tr');
   tr.innerHTML = `
     <td>${i+1}</td>
-    <td><input type="number" step="0.0001" min="0" class="f-comp" placeholder="Ex.: 12"></td>
+    <td><input type="text" class="f-comp" placeholder="Ex.: 12,000"></td>
     <td><input type="number" step="1" min="0" class="f-pecas" placeholder="Ex.: 5"></td>
-    <td class="f-peso">0,0000</td>
+    <td class="f-peso">0,000</td>
   `;
   return tr;
 }
@@ -187,7 +257,6 @@ function renderFardosRows(qtd) {
   for (let i = 0; i < qtd; i++) {
     tbody.appendChild(makeFardoRow(i));
   }
-  // bind recalculo
   tbody.querySelectorAll('input').forEach(inp => {
     inp.addEventListener('input', calcFardos);
   });
@@ -200,23 +269,24 @@ function calcFardos() {
 
   const rows = $$('#fardos-table tbody tr');
   rows.forEach(row => {
-    const comp = toNumber(row.querySelector('.f-comp').value);
-    const pecas = Math.floor(toNumber(row.querySelector('.f-pecas').value));
-    const peso = comp * mat.ppm * pecas; // mesma regra do cálculo único
-    row.querySelector('.f-peso').textContent = fmt(peso, 4);
+    const comp = parseBRDecimal(row.querySelector('.f-comp').value);
+    const pecas = Math.max(0, Math.floor(parseBRDecimal(row.querySelector('.f-pecas').value)));
+    const peso = comp * mat.ppm * pecas;
+    row.querySelector('.f-peso').textContent = fmtBR(peso);
   });
   renderFardosTotal();
 }
 
 function renderFardosTotal() {
   const tds = $$('#fardos-table tbody .f-peso');
-  const total = tds.reduce((acc, td) => acc + toNumber(td.textContent), 0);
-  $('#fardosTotal').textContent = fmt(total, 4);
+  const total = tds.reduce((acc, td) => acc + parseBRDecimal(td.textContent), 0);
+  $('#fardosTotal').textContent = fmtBR(total);
+  $('#totalHighlight').textContent = `Total geral: ${fmtBR(total)} kg`;
 }
 
 function setupFardos() {
   $('#btnGerarFardos').addEventListener('click', () => {
-    const qtd = Math.max(0, Math.floor(toNumber($('#inQtdFardos').value)));
+    const qtd = Math.max(0, Math.floor(parseBRDecimal($('#inQtdFardos').value)));
     renderFardosRows(qtd);
   });
   $('#btnLimparFardos').addEventListener('click', () => {
@@ -230,15 +300,24 @@ function setupFardos() {
 
 // ====== Init ======
 function init() {
+  // Se vazio, exemplo mínimo
+  if (materials.length === 0) {
+    materials = [
+      { id: crypto.randomUUID(), code: '0001', name: 'Barra 1" Aço 1020', ppm: 2.000 },
+      { id: crypto.randomUUID(), code: '0002', name: 'Tubo 3/4" Inox', ppm: 1.350 },
+      { id: crypto.randomUUID(), code: '0003', name: 'Perfil U 100', ppm: 8.750 },
+    ];
+    saveMaterials(materials);
+  }
+
   renderMaterialTable();
   renderMaterialSelects();
   setupMaterialForm();
   setupCalcUnico();
   setupFardos();
 
-  // exibe ppm atual na área rápida
   const m0 = getMaterialById($('#selMaterial').value);
-  if (m0) $('#ppmView').textContent = `${fmt(m0.ppm,4)} kg/m`;
+  if (m0) $('#ppmView').textContent = `${fmtBR(m0.ppm)} kg/m`;
 }
 
 document.addEventListener('DOMContentLoaded', init);
