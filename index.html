@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Conversor de Peças por Peso (Dark Industrial)</title>
   <link rel="stylesheet" href="style.css" />
-  <!-- Leitor Excel (SheetJS) -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
@@ -14,14 +13,12 @@
   </header>
 
   <main class="container">
-    <!-- CADASTRO -->
     <section class="card">
       <div class="card-head">
         <h2>Cadastro de Materiais</h2>
-        <p class="muted">Importe sua planilha <strong>CODIGO | DESCRIÇÃO | PESO POR METRO</strong> (vírgula decimal). Depois de importar, esta área fecha sozinha para manter a tela limpa.</p>
+        <p class="muted">Importe sua planilha <strong>CODIGO | DESCRIÇÃO | PESO POR METRO</strong>. Após importar, a área se fecha automaticamente.</p>
       </div>
 
-      <!-- Área de importação colapsável -->
       <details id="importArea" open>
         <summary style="cursor:pointer;margin:0 0 10px 0;">📄 Importar Excel (.xlsx)</summary>
         <div class="grid">
@@ -46,8 +43,8 @@
           <input id="matName" type="text" placeholder='Ex.: Barra 1" Aço 1020' />
         </div>
         <div class="field">
-          <label for="matPpm">Peso por metro (kg/m)</label>
-          <input id="matPpm" type="text" inputmode="decimal" placeholder="Ex.: 1,800" />
+          <label for="matPpm">Peso por metro (kg/m) — mostrar o texto igual da planilha</label>
+          <input id="matPpm" type="text" inputmode="decimal" placeholder="Ex.: 1,840" />
         </div>
         <div class="field actions">
           <button type="submit" class="btn primary">Adicionar</button>
@@ -70,13 +67,11 @@
       </div>
     </section>
 
-    <!-- CÁLCULO ÚNICO -->
     <section class="card">
       <div class="card-head">
         <h2>Cálculo Rápido</h2>
       </div>
 
-      <!-- Pesquisa por código -->
       <div class="grid grid-4" style="margin-bottom:8px">
         <div class="field">
           <label for="searchCodigo">Pesquisar por código</label>
@@ -104,23 +99,21 @@
       </div>
 
       <div class="result" id="resUnico">
-        <div><span>Peso por metro:</span><strong id="ppmView">—</strong></div>
+        <div><span>Peso por metro (exato da planilha):</span><strong id="ppmView">—</strong></div>
         <div><span>Peso do comprimento:</span><strong id="pesoComprimentoView">—</strong></div>
         <div><span>Peso total (peças):</span><strong id="pesoTotalView">—</strong></div>
       </div>
     </section>
 
-    <!-- FARDOS -->
     <section class="card">
       <div class="card-head">
         <h2>Cálculo por Fardos (mesmo material)</h2>
         <p class="muted">Defina a quantidade de fardos e preencha os valores. Total aparece no rodapé e em destaque.</p>
       </div>
 
-      <!-- Pesquisa por código (fardos) -->
       <div class="grid grid-4" style="margin-bottom:8px">
         <div class="field">
-          <label for="searchCodigoFardos">Pesquisar por código</label>
+          <label for="searchCodigoFardos">Pesquisar por código (fardos)</label>
           <input id="searchCodigoFardos" type="text" placeholder="Digite o código ex.: 0001" />
         </div>
       </div>
@@ -169,7 +162,7 @@
   </main>
 
   <footer class="footer">
-    <small>Dark Industrial — v1.1 (Import Excel + T3)</small>
+    <small>Dark Industrial — v1.2 (Import Excel, PPM exato + resultados BR)</small>
   </footer>
 
   <script src="script.js"></script>
