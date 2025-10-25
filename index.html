@@ -18,19 +18,23 @@
     <section class="card">
       <div class="card-head">
         <h2>Cadastro de Materiais</h2>
-        <p class="muted">Use o botão <strong>Importar Excel (.xlsx)</strong> para cadastrar em massa: colunas <code>CODIGO | DESCRIÇÃO | PESO POR METRO</code>.</p>
+        <p class="muted">Importe sua planilha <strong>CODIGO | DESCRIÇÃO | PESO POR METRO</strong> (vírgula decimal). Depois de importar, esta área fecha sozinha para manter a tela limpa.</p>
       </div>
 
-      <div class="grid">
-        <div class="field">
-          <label>Importar Excel (.xlsx)</label>
-          <input id="fileExcel" type="file" accept=".xlsx,.xls" />
+      <!-- Área de importação colapsável -->
+      <details id="importArea" open>
+        <summary style="cursor:pointer;margin:0 0 10px 0;">📄 Importar Excel (.xlsx)</summary>
+        <div class="grid">
+          <div class="field">
+            <label>Arquivo Excel (.xlsx)</label>
+            <input id="fileExcel" type="file" accept=".xlsx,.xls" />
+          </div>
+          <div class="field actions">
+            <button id="btnImportExcel" class="btn primary">Importar Excel</button>
+            <button id="btnExportJSON" class="btn outline">Exportar JSON</button>
+          </div>
         </div>
-        <div class="field actions">
-          <button id="btnImportExcel" class="btn primary">Importar Excel</button>
-          <button id="btnExportJSON" class="btn outline">Exportar JSON</button>
-        </div>
-      </div>
+      </details>
 
       <form id="material-form" class="grid grid-4">
         <div class="field">
@@ -43,7 +47,7 @@
         </div>
         <div class="field">
           <label for="matPpm">Peso por metro (kg/m)</label>
-          <input id="matPpm" type="text" inputmode="decimal" placeholder="Ex.: 2,000" />
+          <input id="matPpm" type="text" inputmode="decimal" placeholder="Ex.: 1,800" />
         </div>
         <div class="field actions">
           <button type="submit" class="btn primary">Adicionar</button>
@@ -71,6 +75,15 @@
       <div class="card-head">
         <h2>Cálculo Rápido</h2>
       </div>
+
+      <!-- Pesquisa por código -->
+      <div class="grid grid-4" style="margin-bottom:8px">
+        <div class="field">
+          <label for="searchCodigo">Pesquisar por código</label>
+          <input id="searchCodigo" type="text" placeholder="Digite o código ex.: 0001" />
+        </div>
+      </div>
+
       <div class="grid grid-4">
         <div class="field">
           <label for="selMaterial">Material</label>
@@ -102,6 +115,14 @@
       <div class="card-head">
         <h2>Cálculo por Fardos (mesmo material)</h2>
         <p class="muted">Defina a quantidade de fardos e preencha os valores. Total aparece no rodapé e em destaque.</p>
+      </div>
+
+      <!-- Pesquisa por código (fardos) -->
+      <div class="grid grid-4" style="margin-bottom:8px">
+        <div class="field">
+          <label for="searchCodigoFardos">Pesquisar por código</label>
+          <input id="searchCodigoFardos" type="text" placeholder="Digite o código ex.: 0001" />
+        </div>
       </div>
 
       <div class="grid grid-4">
