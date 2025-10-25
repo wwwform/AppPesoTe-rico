@@ -7,7 +7,6 @@
   <link rel="stylesheet" href="style.css" />
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
-    /* Garantir alinhamento à direita no Peso da tabela */
     #material-table td.ppm, #material-table th.ppm { text-align: right; }
   </style>
 </head>
@@ -17,11 +16,10 @@
   </header>
 
   <main class="container">
-    <!-- CADASTRO -->
     <section class="card">
       <div class="card-head">
         <h2>Cadastro de Materiais</h2>
-        <p class="muted">Importe sua planilha <strong>CODIGO | DESCRIÇÃO | PESO POR METRO</strong>. Após importar, a área e a listagem ficam ocultas.</p>
+        <p class="muted">Importe sua planilha <strong>CODIGO | DESCRIÇÃO | PESO POR METRO</strong>.</p>
       </div>
 
       <details id="importArea" open>
@@ -39,145 +37,71 @@
       </details>
 
       <form id="material-form" class="grid grid-4">
-        <div class="field">
-          <label for="matCodigo">Código</label>
-          <input id="matCodigo" type="text" placeholder="Ex.: 1100002132" />
-        </div>
-        <div class="field">
-          <label for="matName">Descrição</label>
-          <input id="matName" type="text" placeholder='Ex.: L 25,4 X 25,4 X 4,8 H' />
-        </div>
-        <div class="field">
-          <label for="matPpm">Peso por metro (kg/m) — exibir exatamente como digitado</label>
-          <input id="matPpm" type="text" inputmode="decimal" placeholder="Ex.: 1,840" />
-        </div>
+        <div class="field"><label>Código</label><input id="matCodigo" type="text" /></div>
+        <div class="field"><label>Descrição</label><input id="matName" type="text" /></div>
+        <div class="field"><label>Peso por metro (kg/m)</label><input id="matPpm" type="text" inputmode="decimal" /></div>
         <div class="field actions">
           <button type="submit" class="btn primary">Adicionar</button>
           <button type="button" id="btnClear" class="btn outline">Limpar</button>
         </div>
       </form>
 
-      <!-- LISTAGEM: OCULTA POR PADRÃO -->
       <details id="cadTable" style="margin-top:10px;">
-        <summary id="cadSummary" style="cursor:pointer;">📦 Ver cadastro (0 itens)</summary>
-
+        <summary id="cadSummary">📦 Ver cadastro (0 itens)</summary>
         <div class="table-wrap" style="margin-top:10px;">
           <div class="field actions" style="justify-content:flex-end;margin:6px 6px 10px;">
             <button id="btnExcluirTudo" class="btn danger">Excluir tudo</button>
           </div>
           <table class="table" id="material-table">
-            <thead>
-              <tr>
-                <th>Código</th>
-                <th>Descrição</th>
-                <th class="ppm">Peso (kg/m)</th>
-                <th class="center">Ações</th>
-              </tr>
-            </thead>
+            <thead><tr><th>Código</th><th>Descrição</th><th class="ppm">Peso (kg/m)</th><th class="center">Ações</th></tr></thead>
             <tbody></tbody>
           </table>
         </div>
       </details>
     </section>
 
-    <!-- CÁLCULO ÚNICO -->
     <section class="card">
       <div class="card-head"><h2>Cálculo Rápido</h2></div>
-
       <div class="grid grid-4" style="margin-bottom:8px">
-        <div class="field">
-          <label for="searchCodigo">Pesquisar por código</label>
-          <input id="searchCodigo" type="text" placeholder="Digite o código ex.: 1100002132" />
-        </div>
+        <div class="field"><label>Pesquisar Código</label><input id="searchCodigo" type="text" /></div>
       </div>
-
       <div class="grid grid-4">
-        <div class="field">
-          <label for="selMaterial">Material</label>
-          <select id="selMaterial"></select>
-        </div>
-        <div class="field">
-          <label for="inComprimento">Comprimento (m)</label>
-          <input id="inComprimento" type="text" inputmode="decimal" placeholder="Ex.: 12,000" />
-        </div>
-        <div class="field">
-          <label for="inPecas">Peças (unid.)</label>
-          <input id="inPecas" type="number" inputmode="numeric" step="1" min="0" placeholder="Ex.: 5" />
-        </div>
-        <div class="field">
-          <label>&nbsp;</label>
-          <button id="btnCalcUnico" class="btn primary block">Calcular</button>
-        </div>
+        <div class="field"><label>Material</label><select id="selMaterial"></select></div>
+        <div class="field"><label>Comprimento (m)</label><input id="inComprimento" type="text" inputmode="decimal" /></div>
+        <div class="field"><label>Peças</label><input id="inPecas" type="number" /></div>
+        <div class="field"><label>&nbsp;</label><button id="btnCalcUnico" class="btn primary block">Calcular</button></div>
       </div>
-
       <div class="result" id="resUnico">
-        <div><span>Peso por metro (texto da planilha/digitado):</span><strong id="ppmView">—</strong></div>
+        <div><span>Peso por metro:</span><strong id="ppmView">—</strong></div>
         <div><span>Peso do comprimento:</span><strong id="pesoComprimentoView">—</strong></div>
         <div><span>Peso total (peças):</span><strong id="pesoTotalView">—</strong></div>
       </div>
     </section>
 
-    <!-- FARDOS -->
     <section class="card">
-      <div class="card-head">
-        <h2>Cálculo por Fardos (mesmo material)</h2>
-        <p class="muted">Total em destaque e no rodapé.</p>
-      </div>
-
+      <div class="card-head"><h2>Cálculo por Fardos</h2></div>
       <div class="grid grid-4" style="margin-bottom:8px">
-        <div class="field">
-          <label for="searchCodigoFardos">Pesquisar por código (fardos)</label>
-          <input id="searchCodigoFardos" type="text" placeholder="Digite o código ex.: 1100002132" />
-        </div>
+        <div class="field"><label>Pesquisar Código</label><input id="searchCodigoFardos" type="text" /></div>
       </div>
-
       <div class="grid grid-4">
-        <div class="field">
-          <label for="selMaterialFardo">Material</label>
-          <select id="selMaterialFardo"></select>
-        </div>
-        <div class="field">
-          <label for="inQtdFardos">Qtd. de fardos</label>
-          <input id="inQtdFardos" type="number" step="1" min="0" placeholder="Ex.: 5" />
-        </div>
-        <div class="field">
-          <label>&nbsp;</label>
-          <button id="btnGerarFardos" class="btn outline">Gerar linhas</button>
-        </div>
-        <div class="field">
-          <label>&nbsp;</label>
-          <button id="btnLimparFardos" class="btn danger">Limpar fardos</button>
-        </div>
+        <div class="field"><label>Material</label><select id="selMaterialFardo"></select></div>
+        <div class="field"><label>Qtd Fardos</label><input id="inQtdFardos" type="number" /></div>
+        <div class="field"><label>&nbsp;</label><button id="btnGerarFardos" class="btn outline">Gerar</button></div>
+        <div class="field"><label>&nbsp;</label><button id="btnLimparFardos" class="btn danger">Limpar</button></div>
       </div>
-
       <div class="total-highlight" id="totalHighlight">Total geral: 0,000 kg</div>
 
       <div class="table-wrap">
         <table class="table" id="fardos-table">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Comprimento (m)</th>
-              <th>Peças</th>
-              <th>Peso do fardo (kg)</th>
-            </tr>
-          </thead>
+          <thead><tr><th>#</th><th>Comp. (m)</th><th>Peças</th><th>Peso (kg)</th></tr></thead>
           <tbody></tbody>
-          <tfoot>
-            <tr>
-              <td colspan="3" class="right"><strong>Total</strong></td>
-              <td><strong id="fardosTotal">0,000</strong></td>
-            </tr>
-          </tfoot>
+          <tfoot><tr><td colspan="3" class="right"><strong>Total</strong></td><td><strong id="fardosTotal">0,000</strong></td></tr></tfoot>
         </table>
       </div>
     </section>
   </main>
 
-  <footer class="footer">
-    <small>Dark — v2.1 (PPM texto puro • D1 • sem fallback • resultado BR)</small>
-  </footer>
-
+  <footer class="footer"><small>Dark — v3.0 FINAL</small></footer>
   <script src="script.js"></script>
 </body>
 </html>
