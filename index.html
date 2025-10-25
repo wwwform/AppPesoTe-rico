@@ -3,8 +3,10 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Conversor de Peças por Peso Teórico</title>
+  <title>Conversor de Peças por Peso (Dark Industrial)</title>
   <link rel="stylesheet" href="style.css" />
+  <!-- Leitor Excel (SheetJS) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
   <header class="topbar">
@@ -12,25 +14,40 @@
   </header>
 
   <main class="container">
-    <!-- CADASTRO DE MATERIAIS -->
+    <!-- CADASTRO -->
     <section class="card">
       <div class="card-head">
         <h2>Cadastro de Materiais</h2>
-        <p class="muted">Informe <strong>Nome</strong> e <strong>Peso por metro (kg/m)</strong>. Os dados ficam salvos no navegador.</p>
+        <p class="muted">Use o botão <strong>Importar Excel (.xlsx)</strong> para cadastrar em massa: colunas <code>CODIGO | DESCRIÇÃO | PESO POR METRO</code>.</p>
       </div>
 
-      <form id="material-form" class="grid">
+      <div class="grid">
         <div class="field">
-          <label for="matName">Nome do material</label>
-          <input id="matName" type="text" placeholder="Ex.: Barra 1” Aço 1020" required />
+          <label>Importar Excel (.xlsx)</label>
+          <input id="fileExcel" type="file" accept=".xlsx,.xls" />
+        </div>
+        <div class="field actions">
+          <button id="btnImportExcel" class="btn primary">Importar Excel</button>
+          <button id="btnExportJSON" class="btn outline">Exportar JSON</button>
+        </div>
+      </div>
+
+      <form id="material-form" class="grid grid-4">
+        <div class="field">
+          <label for="matCodigo">Código</label>
+          <input id="matCodigo" type="text" placeholder="Ex.: 0001" />
+        </div>
+        <div class="field">
+          <label for="matName">Descrição</label>
+          <input id="matName" type="text" placeholder='Ex.: Barra 1" Aço 1020' />
         </div>
         <div class="field">
           <label for="matPpm">Peso por metro (kg/m)</label>
-          <input id="matPpm" type="number" inputmode="decimal" step="0.0001" min="0" placeholder="Ex.: 2.0000" required />
+          <input id="matPpm" type="text" inputmode="decimal" placeholder="Ex.: 2,000" />
         </div>
         <div class="field actions">
           <button type="submit" class="btn primary">Adicionar</button>
-          <button type="button" id="btnClear" class="btn">Limpar</button>
+          <button type="button" id="btnClear" class="btn outline">Limpar</button>
         </div>
       </form>
 
@@ -38,22 +55,22 @@
         <table class="table" id="material-table">
           <thead>
             <tr>
-              <th>Nome</th>
+              <th>Código</th>
+              <th>Descrição</th>
               <th>Peso (kg/m)</th>
               <th class="center">Ações</th>
             </tr>
           </thead>
-          <tbody><!-- preenchido via JS --></tbody>
+          <tbody></tbody>
         </table>
       </div>
     </section>
 
-    <!-- SELEÇÃO + CÁLCULO ÚNICO -->
+    <!-- CÁLCULO ÚNICO -->
     <section class="card">
       <div class="card-head">
-        <h2>Cálculo Rápido (Material Selecionado)</h2>
+        <h2>Cálculo Rápido</h2>
       </div>
-
       <div class="grid grid-4">
         <div class="field">
           <label for="selMaterial">Material</label>
@@ -61,7 +78,7 @@
         </div>
         <div class="field">
           <label for="inComprimento">Comprimento (m)</label>
-          <input id="inComprimento" type="number" inputmode="decimal" step="0.0001" min="0" placeholder="Ex.: 12" />
+          <input id="inComprimento" type="text" inputmode="decimal" placeholder="Ex.: 12,000" />
         </div>
         <div class="field">
           <label for="inPecas">Peças (unid.)</label>
@@ -84,7 +101,7 @@
     <section class="card">
       <div class="card-head">
         <h2>Cálculo por Fardos (mesmo material)</h2>
-        <p class="muted">Informe quantos fardos você quer calcular. Para cada fardo, preencha comprimento (m) e peças.</p>
+        <p class="muted">Defina a quantidade de fardos e preencha os valores. Total aparece no rodapé e em destaque.</p>
       </div>
 
       <div class="grid grid-4">
@@ -98,13 +115,15 @@
         </div>
         <div class="field">
           <label>&nbsp;</label>
-          <button id="btnGerarFardos" class="btn">Gerar linhas</button>
+          <button id="btnGerarFardos" class="btn outline">Gerar linhas</button>
         </div>
         <div class="field">
           <label>&nbsp;</label>
           <button id="btnLimparFardos" class="btn danger">Limpar fardos</button>
         </div>
       </div>
+
+      <div class="total-highlight" id="totalHighlight">Total geral: 0,000 kg</div>
 
       <div class="table-wrap">
         <table class="table" id="fardos-table">
@@ -116,11 +135,11 @@
               <th>Peso do fardo (kg)</th>
             </tr>
           </thead>
-          <tbody><!-- linhas via JS --></tbody>
+          <tbody></tbody>
           <tfoot>
             <tr>
               <td colspan="3" class="right"><strong>Total</strong></td>
-              <td><strong id="fardosTotal">0,0000</strong></td>
+              <td><strong id="fardosTotal">0,000</strong></td>
             </tr>
           </tfoot>
         </table>
@@ -129,7 +148,7 @@
   </main>
 
   <footer class="footer">
-    <small>v1.0 — Etapa inicial. Próximas regras serão adicionadas depois que você aprovar.</small>
+    <small>Dark Industrial — v1.1 (Import Excel + T3)</small>
   </footer>
 
   <script src="script.js"></script>
