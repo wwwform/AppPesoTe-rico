@@ -1,25 +1,73 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-theme="dark">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Conversor de Peças por Peso (Dark)</title>
-  <link rel="stylesheet" href="style.css" />
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <title>Conversor de Peças por Peso</title>
+  <link rel="stylesheet" href="themes/theme-dark.css" />
+  <link rel="stylesheet" href="themes/theme-light.css" />
+  <link rel="stylesheet" href="themes/theme-excel.css" />
+  <script>
+    // Aplicar tema salvo antes do render para evitar flicker
+    (function(){
+      try {
+        var saved = localStorage.getItem('theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', saved);
+      } catch(e){}
+    })();
+  </script>
   <style>
-    #material-table td.ppm, #material-table th.ppm { text-align: right; }
+    /* Fallback mínimo se CSS externo não carregar */
+    body{font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin:0}
+    header.topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 18px}
+    .theme-switch{display:flex;gap:10px;align-items:center}
+    .theme-btn{cursor:pointer;user-select:none;font-size:20px;line-height:1}
+    main.container{max-width:1100px;margin:18px auto;padding:0 12px}
+    .card{border-radius:10px;padding:16px;margin-bottom:16px}
+    .card-head h2{margin:0 0 4px 0}
+    .muted{opacity:.8;font-size:.9rem}
+    .grid{display:grid;gap:12px}
+    .grid-4{grid-template-columns:repeat(4, minmax(0,1fr))}
+    @media (max-width:900px){ .grid-4{grid-template-columns:repeat(2, minmax(0,1fr))} }
+    @media (max-width:560px){ .grid-4{grid-template-columns:1fr} }
+    .field{display:flex;flex-direction:column;gap:6px}
+    .field input,.field select,.field button{padding:10px;border-radius:8px;border:1px solid transparent}
+    .actions{display:flex;gap:10px;align-items:center}
+    .btn{padding:10px 14px;border-radius:10px;border:1px solid transparent;cursor:pointer}
+    .btn.primary{font-weight:600}
+    .btn.outline{background:transparent;border:1px solid currentColor}
+    .btn.danger{background:transparent;border:1px solid currentColor}
+    .btn.block{width:100%}
+    details summary{font-weight:600}
+    .table-wrap{overflow:auto}
+    table.table{width:100%;border-collapse:separate;border-spacing:0}
+    table.table th, table.table td{padding:10px 12px;white-space:nowrap}
+    table.table thead th{position:sticky;top:0;z-index:1}
+    table.table th.center, table.table td.center{text-align:center}
+    table.table th.ppm, table.table td.ppm{text-align:right}
+    .right{text-align:right}
+    .result{display:flex;flex-wrap:wrap;gap:18px;margin-top:10px}
+    .result div{display:flex;gap:8px;align-items:baseline}
+    .total-highlight{margin:10px 0;font-weight:700}
+    footer.footer{padding:16px;text-align:center;opacity:.8}
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
   <header class="topbar">
     <h1>Conversor de Peças por Peso (kg/m)</h1>
+    <div class="theme-switch" aria-label="Trocar tema">
+      <span class="theme-btn" id="t-light" title="Tema Claro" role="button">💡</span>
+      <span class="theme-btn" id="t-dark" title="Tema Dark" role="button">🌙</span>
+      <span class="theme-btn" id="t-excel" title="Tema Excel" role="button">📊</span>
+    </div>
   </header>
 
   <main class="container">
     <section class="card">
       <div class="card-head">
         <h2>Cadastro de Materiais</h2>
-        <p class="muted">Importe sua planilha <strong>CODIGO | DESCRIÇÃO | PESO POR METRO</strong>.</p>
+        <p class="muted">Importe a planilha <strong>CODIGO | DESCRIÇÃO | PESO POR METRO</strong>. Após importar, a área e a listagem ficam ocultas.</p>
       </div>
 
       <details id="importArea" open>
@@ -101,7 +149,7 @@
     </section>
   </main>
 
-  <footer class="footer"><small>Dark — v3.0 FINAL</small></footer>
+  <footer class="footer"><small>v3.1 — Temas: Claro / Dark / Excel</small></footer>
   <script src="script.js"></script>
 </body>
 </html>
