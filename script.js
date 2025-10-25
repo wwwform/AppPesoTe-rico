@@ -45,7 +45,7 @@ function renderMaterialTable() {
   tbody.innerHTML = '';
   materials.forEach(m => {
     const tr = document.createElement('tr');
-    const displayPpm = m.ppmDisplay !== undefined ? m.ppmDisplay : (m.ppm !== undefined ? fmtBR(m.ppm) : '');
+    const displayPpm = m.ppmDisplay ?? '';
     tr.innerHTML = `
       <td>${m.code || ''}</td>
       <td>${m.name}</td>
