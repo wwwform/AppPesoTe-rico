@@ -8,68 +8,39 @@ let materials = loadMaterials();
 const $  = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 
-// parser: BR estrito para conta interna (não mexe na exibição da planilha)
+// parse BR estrito para CONTA INTERNA (exibição nunca é alterada)
 function parseBR_strict(s){
   if(s===null||s===undefined) return 0;
   if(typeof s==='number' && Number.isFinite(s)) return s;
-  s = String(s).trim();
-  if(!s) return 0;
-  // mantém só dígitos , .
-  s = s.replace(/[^\d.,-]/g,'');
-  // remove milhar, vírgula->ponto
-  s = s.replace(/\./g,'').replace(',', '.');
+  s = String(s).trim(); if(!s) return 0;
+  s = s.replace(/[^\d.,-]/g,'');           // mantém dígitos , .
+  s = s.replace(/\./g,'').replace(',', '.'); // remove milhar, vírgula -> ponto
   const n = Number(s);
   return Number.isFinite(n) ? n : 0;
 }
 
-// format pt-BR com 3 casas para resultados
+// resultado sempre pt-BR com 3 casas
 function fmtBR3(n){ return Number(n).toLocaleString('pt-BR',{minimumFractionDigits:3, maximumFractionDigits:3}); }
 
-// T2: normaliza manual para 3 casas, vírgula, e milhar com ponto
-function normalizeManualDisplay(textOrNumber){
-  // se já vier com vírgula, respeita e completa 3 casas
-  let s = String(textOrNumber ?? '').trim();
-  if(!s) return '0,000';
-  if(s.includes(',')){
-    let [int, frac=''] = s.split(',');
-    int = int.replace(/\D/g,'').replace(/^0+(?=\d)/,'') || '0';
-    frac = (frac.replace(/\D/g,'') + '000').slice(0,3);
-    // milhar com ponto
-    int = Number(int).toLocaleString('pt-BR',{maximumFractionDigits:0});
-    return `${int},${frac}`;
-  }
-  // se veio com ponto (digitado errado), trata ponto como decimal
-  if(s.includes('.')){
-    const n = Number(s);
-    if(!Number.isFinite(n)) return '0,000';
-    return fmtBR3(n);
-  }
-  // inteiro puro
-  const n = Number(s);
-  if(!Number.isFinite(n)) return '0,000';
-  return fmtBR3(n);
-}
-
-// decide como mostrar o PPM na tabela/select
-function displayPPM(m){
-  // se veio do Excel, exibir exatamente o texto do Excel
-  if(m.source === 'excel' && m.ppmDisplay) return m.ppmDisplay;
-  // se foi manual, normalizar T2
-  if(m.ppmDisplay) return normalizeManualDisplay(m.ppmDisplay);
-  // fallback (nunca usado se cadastro está correto)
-  return '0,000';
-}
-
+// cabeçalho normalizado
 function normalizeHeader(h){
   return String(h||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim();
 }
+
 function getMaterialById(id){ return materials.find(m=>m.id===id) || null; }
+
+// exibir PPM: SEMPRE ppmDisplay (texto), sem fallback
+function displayPPM(m){
+  if (m && typeof m.ppmDisplay === 'string') return m.ppmDisplay;
+  return ''; // NUNCA usa número para exibir
+}
 
 // ===== Cadastro: render =====
 function updateCadSummary(){
   const sum = $('#cadSummary'); if(!sum) return;
   sum.textContent = `📦 Ver cadastro (${materials.length} itens)`;
 }
+
 function renderMaterialTable(){
   const tbody = $('#material-table tbody'); if(!tbody) return;
   tbody.innerHTML = '';
@@ -77,8 +48,8 @@ function renderMaterialTable(){
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${m.code || ''}</td>
-      <td>${m.name}</td>
-      <td>${displayPPM(m)}</td>
+      <td>${m.name || ''}</td>
+      <td class="ppm">${displayPPM(m)}</td>
       <td class="center">
         <button class="btn outline" data-edit="${m.id}">Editar</button>
         <button class="btn danger"  data-del="${m.id}">Excluir</button>
@@ -92,7 +63,7 @@ function renderMaterialTable(){
       const m = getMaterialById(btn.getAttribute('data-edit')); if(!m) return;
       $('#matCodigo').value = m.code || '';
       $('#matName').value   = m.name || '';
-      $('#matPpm').value    = m.ppmDisplay || '';
+      $('#matPpm').value    = displayPPM(m);
       $('#material-form').dataset.editing = m.id;
       $('#material-form').querySelector('button[type="submit"]').textContent = 'Salvar';
     });
@@ -120,7 +91,8 @@ function renderMaterialSelects(){
     sorted.forEach(m=>{
       const opt = document.createElement('option');
       opt.value = m.id;
-      opt.textContent = `${m.code ? m.code + ' – ' : ''}${m.name} — ${displayPPM(m)} kg/m`;
+      // Select com Código + Descrição + Peso (peso é SEMPRE ppmDisplay)
+      opt.textContent = `${m.code ? m.code + ' – ' : ''}${m.name || ''} — ${displayPPM(m)} kg/m`;
       sel.appendChild(opt);
     });
   });
@@ -134,8 +106,8 @@ function setupMaterialForm(){
     e.preventDefault();
     const code = $('#matCodigo').value.trim();
     const name = $('#matName').value.trim();
-    const ppmDisplay = $('#matPpm').value.trim();
-    const ppm = parseBR_strict(ppmDisplay);
+    const ppmDisplay = $('#matPpm').value.trim(); // exibir exatamente como digitado
+    const ppm = parseBR_strict(ppmDisplay);       // número só para cálculo
 
     if(!name){ alert('Informe a descrição.'); return; }
     if(!(ppm>0)){ alert('Informe um peso por metro maior que zero.'); return; }
