@@ -1,8 +1,25 @@
+// === Tema ===
+(function themeInit(){
+  function applyTheme(t){
+    document.documentElement.setAttribute('data-theme', t);
+    try { localStorage.setItem('theme', t); } catch(e){}
+  }
+  document.addEventListener('DOMContentLoaded', ()=>{
+    const tl = document.getElementById('t-light');
+    const td = document.getElementById('t-dark');
+    const te = document.getElementById('t-excel');
+    tl && tl.addEventListener('click', ()=>applyTheme('light'));
+    td && td.addEventListener('click', ()=>applyTheme('dark'));
+    te && te.addEventListener('click', ()=>applyTheme('excel'));
+  });
+})();
+
+// ===== Storage =====
 const LS_KEY = 'materiais_ppm_v3';
 const $ = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 
-function loadMaterials(){ try{return JSON.parse(localStorage.getItem(LS_KEY))||[]}catch{return[]}}
+function loadMaterials(){ try{return JSON.parse(localStorage.getItem(LS_KEY))||[]}catch{return[]}};
 function saveMaterials(arr){ localStorage.setItem(LS_KEY, JSON.stringify(arr)); }
 let materials = loadMaterials();
 
@@ -32,32 +49,30 @@ function importExcel(){
       const rows = XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:''});
       if(!rows.length) return alert('Planilha vazia.');
 
-      const header = rows[0].map(h=>normalizeHeader(h));
-      let idxCod=0, idxDesc=1, idxPpm=2;
-
+      // cabeçalho livre, mas assumimos 3 colunas principais nas primeiras posições
       const imported=[];
       for(let r=1;r<rows.length;r++){
         const row = rows[r]; if(!row||!row.length) continue;
-        const code = String(row[idxCod]||'').trim();
-        const name = String(row[idxDesc]||'').trim();
-        const raw = row[idxPpm];
+        const code = String(row[0]||'').trim();
+        const name = String(row[1]||'').trim();
+        const raw  = row[2];
 
-        if(!name || raw==='')
-          continue;
+        if(!name || raw==='') continue;
 
         let ppmDisplay = '';
         let ppm = 0;
 
         if(typeof raw === 'number'){
-          // CASO A → NÚMERO DO EXCEL → 3 CASAS
+          // CASO A → NÚMERO DO EXCEL → 3 CASAS e vírgula
           ppm = raw;
           ppmDisplay = raw.toLocaleString('pt-BR',{
             minimumFractionDigits:3,
             maximumFractionDigits:3
           });
         } else {
-          ppmDisplay = String(raw).trim();     // texto puro
-          ppm = parseBR_num(ppmDisplay);       // número só p/ cálculo
+          // texto literal
+          ppmDisplay = String(raw).trim();
+          ppm = parseBR_num(ppmDisplay);
         }
         if(!(ppm>0)) continue;
 
@@ -69,8 +84,10 @@ function importExcel(){
       renderMaterialTable();
       renderMaterialSelects();
 
-      $('#importArea').open = false;
-      $('#cadTable').open = false;
+      // fecha import e listagem
+      const ia = $('#importArea'); if(ia) ia.open=false;
+      const ct = $('#cadTable');  if(ct) ct.open=false;
+
       alert(`Importados: ${imported.length}`);
     }catch(err){ console.error(err); alert('Erro ao importar.'); }
   };
@@ -81,7 +98,8 @@ function importExcel(){
 function displayPPM(m){ return m.ppmDisplay||''; }
 
 function renderMaterialTable(){
-  const tbody = $('#material-table tbody'); tbody.innerHTML='';
+  const tbody = $('#material-table tbody'); if(!tbody) return;
+  tbody.innerHTML='';
   materials.forEach(m=>{
     const tr=document.createElement('tr');
     tr.innerHTML=`
@@ -97,9 +115,9 @@ function renderMaterialTable(){
 
   tbody.querySelectorAll('button[data-edit]').forEach(b=>b.onclick=()=>{
     const m = materials.find(x=>x.id===b.dataset.edit);
-    $('#matCodigo').value=m.code;
-    $('#matName').value=m.name;
-    $('#matPpm').value=m.ppmDisplay;
+    $('#matCodigo').value=m.code||'';
+    $('#matName').value=m.name||'';
+    $('#matPpm').value=m.ppmDisplay||'';
     $('#material-form').dataset.editing=m.id;
     $('#material-form button[type="submit"]').textContent='Salvar';
   });
@@ -137,7 +155,7 @@ function setupForm(){
     const ppmDisplay=$('#matPpm').value.trim();
     const ppm=parseBR_num(ppmDisplay);
 
-    if(!name) return alert('Informe o nome.');
+    if(!name) return alert('Informe a descrição.');
     if(!(ppm>0)) return alert('PPM inválido.');
 
     const editing=form.dataset.editing;
@@ -257,6 +275,6 @@ function init(){
   setupCalcUnico();
   setupFardos();
   setupSearch();
-  $('#cadTable').open=false;
+  const ct = $('#cadTable'); if(ct) ct.open=false;
 }
 document.addEventListener('DOMContentLoaded', init);
