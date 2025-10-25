@@ -8,18 +8,58 @@ let materials = loadMaterials();
 const $  = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 
+// parser: BR estrito para conta interna (não mexe na exibição da planilha)
 function parseBR_strict(s){
   if(s===null||s===undefined) return 0;
   if(typeof s==='number' && Number.isFinite(s)) return s;
-  s = String(s).trim(); if(!s) return 0;
-  s = s.replace(/[^\d.,-]/g,'');       // mantém só dígitos , .
-  s = s.replace(/\./g,'').replace(',', '.'); // remove milhar, vírgula->ponto
+  s = String(s).trim();
+  if(!s) return 0;
+  // mantém só dígitos , .
+  s = s.replace(/[^\d.,-]/g,'');
+  // remove milhar, vírgula->ponto
+  s = s.replace(/\./g,'').replace(',', '.');
   const n = Number(s);
   return Number.isFinite(n) ? n : 0;
 }
-function fmtBR(n, dec=3){
-  return Number(n).toLocaleString('pt-BR',{minimumFractionDigits:dec, maximumFractionDigits:dec});
+
+// format pt-BR com 3 casas para resultados
+function fmtBR3(n){ return Number(n).toLocaleString('pt-BR',{minimumFractionDigits:3, maximumFractionDigits:3}); }
+
+// T2: normaliza manual para 3 casas, vírgula, e milhar com ponto
+function normalizeManualDisplay(textOrNumber){
+  // se já vier com vírgula, respeita e completa 3 casas
+  let s = String(textOrNumber ?? '').trim();
+  if(!s) return '0,000';
+  if(s.includes(',')){
+    let [int, frac=''] = s.split(',');
+    int = int.replace(/\D/g,'').replace(/^0+(?=\d)/,'') || '0';
+    frac = (frac.replace(/\D/g,'') + '000').slice(0,3);
+    // milhar com ponto
+    int = Number(int).toLocaleString('pt-BR',{maximumFractionDigits:0});
+    return `${int},${frac}`;
+  }
+  // se veio com ponto (digitado errado), trata ponto como decimal
+  if(s.includes('.')){
+    const n = Number(s);
+    if(!Number.isFinite(n)) return '0,000';
+    return fmtBR3(n);
+  }
+  // inteiro puro
+  const n = Number(s);
+  if(!Number.isFinite(n)) return '0,000';
+  return fmtBR3(n);
 }
+
+// decide como mostrar o PPM na tabela/select
+function displayPPM(m){
+  // se veio do Excel, exibir exatamente o texto do Excel
+  if(m.source === 'excel' && m.ppmDisplay) return m.ppmDisplay;
+  // se foi manual, normalizar T2
+  if(m.ppmDisplay) return normalizeManualDisplay(m.ppmDisplay);
+  // fallback (nunca usado se cadastro está correto)
+  return '0,000';
+}
+
 function normalizeHeader(h){
   return String(h||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim();
 }
@@ -34,12 +74,11 @@ function renderMaterialTable(){
   const tbody = $('#material-table tbody'); if(!tbody) return;
   tbody.innerHTML = '';
   materials.forEach(m=>{
-    const displayPpm = (m.ppmDisplay && String(m.ppmDisplay).trim()!=='') ? m.ppmDisplay : '0,000';
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${m.code || ''}</td>
       <td>${m.name}</td>
-      <td>${displayPpm}</td>
+      <td>${displayPPM(m)}</td>
       <td class="center">
         <button class="btn outline" data-edit="${m.id}">Editar</button>
         <button class="btn danger"  data-del="${m.id}">Excluir</button>
@@ -53,7 +92,7 @@ function renderMaterialTable(){
       const m = getMaterialById(btn.getAttribute('data-edit')); if(!m) return;
       $('#matCodigo').value = m.code || '';
       $('#matName').value   = m.name || '';
-      $('#matPpm').value    = (m.ppmDisplay && String(m.ppmDisplay).trim()!=='') ? m.ppmDisplay : '0,000';
+      $('#matPpm').value    = m.ppmDisplay || '';
       $('#material-form').dataset.editing = m.id;
       $('#material-form').querySelector('button[type="submit"]').textContent = 'Salvar';
     });
@@ -66,25 +105,22 @@ function renderMaterialTable(){
       materials = materials.filter(x=>x.id!==id);
       saveMaterials(materials);
       renderMaterialTable(); renderMaterialSelects(); renderFardosTotal(); updateCadSummary();
+      if(materials.length===0){ const dt=$('#cadTable'); if(dt && dt.open) dt.open=false; }
     });
   });
 
   updateCadSummary();
-  // se não há itens, fecha listagem
-  if(materials.length===0){
-    const dt = $('#cadTable'); if(dt && dt.open) dt.open = false;
-  }
 }
+
 function renderMaterialSelects(){
   const sels = [$('#selMaterial'), $('#selMaterialFardo')].filter(Boolean);
   const sorted = [...materials].sort((a,b)=>String(a.code||'').localeCompare(String(b.code||'')));
   sels.forEach(sel=>{
     sel.innerHTML = '';
     sorted.forEach(m=>{
-      const displayPpm = (m.ppmDisplay && String(m.ppmDisplay).trim()!=='') ? m.ppmDisplay : '0,000';
       const opt = document.createElement('option');
       opt.value = m.id;
-      opt.textContent = `${m.code ? m.code + ' – ' : ''}${m.name} — ${displayPpm} kg/m`;
+      opt.textContent = `${m.code ? m.code + ' – ' : ''}${m.name} — ${displayPPM(m)} kg/m`;
       sel.appendChild(opt);
     });
   });
@@ -100,17 +136,21 @@ function setupMaterialForm(){
     const name = $('#matName').value.trim();
     const ppmDisplay = $('#matPpm').value.trim();
     const ppm = parseBR_strict(ppmDisplay);
+
     if(!name){ alert('Informe a descrição.'); return; }
     if(!(ppm>0)){ alert('Informe um peso por metro maior que zero.'); return; }
 
     const editingId = form.dataset.editing;
     if(editingId){
       const i = materials.findIndex(m=>m.id===editingId);
-      if(i>=0){ materials[i].code=code; materials[i].name=name; materials[i].ppm=ppm; materials[i].ppmDisplay=ppmDisplay||'0,000'; }
+      if(i>=0){
+        materials[i].code=code; materials[i].name=name;
+        materials[i].ppm=ppm; materials[i].ppmDisplay=ppmDisplay; materials[i].source='manual';
+      }
       delete form.dataset.editing;
       form.querySelector('button[type="submit"]').textContent='Adicionar';
     }else{
-      materials.unshift({ id:crypto.randomUUID(), code, name, ppm, ppmDisplay: ppmDisplay||'0,000' });
+      materials.unshift({ id:crypto.randomUUID(), code, name, ppm, ppmDisplay, source:'manual' });
     }
     saveMaterials(materials);
     form.reset();
@@ -152,7 +192,7 @@ function setupMaterialForm(){
           const ppmRaw = String(row[idxPpm]||'').trim();
           if(!name || !ppmRaw) continue;
           const ppm = parseBR_strict(ppmRaw); if(!(ppm>0)) continue;
-          imported.push({ id:crypto.randomUUID(), code, name, ppm, ppmDisplay: ppmRaw });
+          imported.push({ id:crypto.randomUUID(), code, name, ppm, ppmDisplay: ppmRaw, source:'excel' });
         }
         if(!imported.length){ alert('Nenhuma linha válida encontrada.'); return; }
 
@@ -181,8 +221,8 @@ function setupMaterialForm(){
 
   // EXCLUIR TUDO
   $('#btnExcluirTudo')?.addEventListener('click',()=>{
-    if(!confirm('Tem certeza que deseja excluir TODOS os materiais?')) return;
-    if(!confirm('Confirma novamente? Essa ação não pode ser desfeita.')) return;
+    if(!confirm('Excluir TODOS os materiais?')) return;
+    if(!confirm('Confirmar exclusão total?')) return;
     materials = [];
     saveMaterials(materials);
     renderMaterialTable(); renderMaterialSelects(); renderFardosTotal(); updateCadSummary();
@@ -197,9 +237,9 @@ function calcUnico(){
   const pecas = Math.max(0, Math.floor(parseBR_strict($('#inPecas').value)));
   const pesoComp  = comp * m.ppm;
   const pesoTotal = pesoComp * pecas;
-  $('#ppmView').textContent = `${(m.ppmDisplay && String(m.ppmDisplay).trim()!=='') ? m.ppmDisplay : '0,000'} kg/m`;
-  $('#pesoComprimentoView').textContent = `${fmtBR(pesoComp)} kg`;
-  $('#pesoTotalView').textContent = `${fmtBR(pesoTotal)} kg`;
+  $('#ppmView').textContent = `${displayPPM(m)} kg/m`;
+  $('#pesoComprimentoView').textContent = `${fmtBR3(pesoComp)} kg`;
+  $('#pesoTotalView').textContent = `${fmtBR3(pesoTotal)} kg`;
 }
 function setupCalcUnico(){
   $('#btnCalcUnico')?.addEventListener('click', calcUnico);
@@ -207,7 +247,7 @@ function setupCalcUnico(){
     if($('#inComprimento').value || $('#inPecas').value) calcUnico();
     else{
       const m = getMaterialById($('#selMaterial').value);
-      $('#ppmView').textContent = m ? `${(m.ppmDisplay && String(m.ppmDisplay).trim()!=='') ? m.ppmDisplay : '0,000'} kg/m` : '—';
+      $('#ppmView').textContent = m ? `${displayPPM(m)} kg/m` : '—';
       $('#pesoComprimentoView').textContent = '—';
       $('#pesoTotalView').textContent = '—';
     }
@@ -236,15 +276,15 @@ function calcFardos(){
     const comp = parseBR_strict(row.querySelector('.f-comp').value);
     const pecas= Math.max(0, Math.floor(parseBR_strict(row.querySelector('.f-pecas').value)));
     const peso = comp * mat.ppm * pecas;
-    row.querySelector('.f-peso').textContent = fmtBR(peso);
+    row.querySelector('.f-peso').textContent = fmtBR3(peso);
   });
   renderFardosTotal();
 }
 function renderFardosTotal(){
   const tds = $$('#fardos-table tbody .f-peso');
   const total = tds.reduce((acc,td)=>acc+parseBR_strict(td.textContent),0);
-  $('#fardosTotal').textContent = fmtBR(total);
-  $('#totalHighlight').textContent = `Total geral: ${fmtBR(total)} kg`;
+  $('#fardosTotal').textContent = fmtBR3(total);
+  $('#totalHighlight').textContent = `Total geral: ${fmtBR3(total)} kg`;
 }
 function setupFardos(){
   $('#btnGerarFardos')?.addEventListener('click',()=>{
@@ -272,11 +312,11 @@ function setupCodeSearch(){
 
 // ===== Init =====
 function init(){
-  // sem seeds para não poluir sua base
   renderMaterialTable(); renderMaterialSelects(); updateCadSummary();
   setupMaterialForm(); setupCalcUnico(); setupFardos(); setupCodeSearch();
 
+  const dt = $('#cadTable'); if(dt) dt.open = false; // oculta listagem por padrão
   const m0 = getMaterialById($('#selMaterial')?.value);
-  if(m0) $('#ppmView').textContent = `${(m0.ppmDisplay && String(m0.ppmDisplay).trim()!=='') ? m0.ppmDisplay : '0,000'} kg/m`;
+  if(m0) $('#ppmView').textContent = `${displayPPM(m0)} kg/m`;
 }
 document.addEventListener('DOMContentLoaded', init);
