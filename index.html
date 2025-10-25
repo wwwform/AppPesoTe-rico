@@ -3,9 +3,13 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Conversor de Peças por Peso (Dark Industrial)</title>
+  <title>Conversor de Peças por Peso (Dark)</title>
   <link rel="stylesheet" href="style.css" />
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    /* Garantir alinhamento à direita no Peso da tabela, mesmo sem CSS externo */
+    #material-table td.ppm, #material-table th.ppm { text-align: right; }
+  </style>
 </head>
 <body>
   <header class="topbar">
@@ -39,14 +43,14 @@
       <form id="material-form" class="grid grid-4">
         <div class="field">
           <label for="matCodigo">Código</label>
-          <input id="matCodigo" type="text" placeholder="Ex.: 0001" />
+          <input id="matCodigo" type="text" placeholder="Ex.: 1100002132" />
         </div>
         <div class="field">
           <label for="matName">Descrição</label>
-          <input id="matName" type="text" placeholder='Ex.: Barra 1" Aço 1020' />
+          <input id="matName" type="text" placeholder='Ex.: L 25,4 x 25,4 x 3,18mm' />
         </div>
         <div class="field">
-          <label for="matPpm">Peso por metro (kg/m)</label>
+          <label for="matPpm">Peso por metro (kg/m) — exibir exatamente como digitado</label>
           <input id="matPpm" type="text" inputmode="decimal" placeholder="Ex.: 1,840" />
         </div>
         <div class="field actions">
@@ -68,7 +72,7 @@
               <tr>
                 <th>Código</th>
                 <th>Descrição</th>
-                <th>Peso (kg/m)</th>
+                <th class="ppm">Peso (kg/m)</th>
                 <th class="center">Ações</th>
               </tr>
             </thead>
@@ -85,7 +89,7 @@
       <div class="grid grid-4" style="margin-bottom:8px">
         <div class="field">
           <label for="searchCodigo">Pesquisar por código</label>
-          <input id="searchCodigo" type="text" placeholder="Digite o código ex.: 0001" />
+          <input id="searchCodigo" type="text" placeholder="Digite o código ex.: 1100002132" />
         </div>
       </div>
 
@@ -109,7 +113,7 @@
       </div>
 
       <div class="result" id="resUnico">
-        <div><span>Peso por metro (da planilha):</span><strong id="ppmView">—</strong></div>
+        <div><span>Peso por metro (da planilha/digitado):</span><strong id="ppmView">—</strong></div>
         <div><span>Peso do comprimento:</span><strong id="pesoComprimentoView">—</strong></div>
         <div><span>Peso total (peças):</span><strong id="pesoTotalView">—</strong></div>
       </div>
@@ -125,7 +129,7 @@
       <div class="grid grid-4" style="margin-bottom:8px">
         <div class="field">
           <label for="searchCodigoFardos">Pesquisar por código (fardos)</label>
-          <input id="searchCodigoFardos" type="text" placeholder="Digite o código ex.: 0001" />
+          <input id="searchCodigoFardos" type="text" placeholder="Digite o código ex.: 1100002132" />
         </div>
       </div>
 
@@ -173,7 +177,7 @@
   </main>
 
   <footer class="footer">
-    <small>Dark Industrial — v1.4 (PPM Excel intacto • T2 • Listagem oculta • Excluir tudo)</small>
+    <small>Dark — v2.0 (PPM texto intacto • D1 • sem fallback • resultado BR)</small>
   </footer>
 
   <script src="script.js"></script>
