@@ -29,10 +29,9 @@ function normalizeHeader(h){
 
 function getMaterialById(id){ return materials.find(m=>m.id===id) || null; }
 
-// exibir PPM: SEMPRE ppmDisplay (texto), sem fallback
+// exibir PPM: SEMPRE ppmDisplay (texto puro), sem fallback
 function displayPPM(m){
-  if (m && typeof m.ppmDisplay === 'string') return m.ppmDisplay;
-  return ''; // NUNCA usa número para exibir
+  return (m && typeof m.ppmDisplay === 'string') ? m.ppmDisplay : '';
 }
 
 // ===== Cadastro: render =====
