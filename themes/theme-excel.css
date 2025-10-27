@@ -1,11 +1,9 @@
-
-/* EX2 — Excel “Barra Verde” */
 html[data-theme="excel"] {
   --bg: #f5f7f5;
   --card: #ffffff;
   --text: #0b1020;
   --muted: #334155;
-  --primary: #217346; /* Verde Excel */
+  --primary: #217346;
   --border: #d1d5db;
   --accent: #2ea05a;
   --danger: #b91c1c;
