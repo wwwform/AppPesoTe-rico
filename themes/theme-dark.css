@@ -1,4 +1,3 @@
-
 html[data-theme="dark"] {
   --bg: #0f1115;
   --card: #151925;
@@ -17,7 +16,8 @@ html[data-theme="dark"] .card{ background:var(--card); border:1px solid var(--bo
 html[data-theme="dark"] input, select{ background:#0f1320; color:var(--text); border-color:#263049; }
 
 /* Contraste melhor em selects/options */
-html[data-theme="dark"] select { color:#fff; font-weight:500; }
+html[data-theme="dark"] select { color:#fff; font-weight:500; background:#0f1320 !important; border:1px solid #263049 !important; }
+html[data-theme="dark"] select:focus { background:#0b101a !important; }
 html[data-theme="dark"] option { color:#fff; background:#0c0f17; }
 
 html[data-theme="dark"] .btn.primary{ background:var(--primary); color:#0b1220; }
@@ -27,3 +27,14 @@ html[data-theme="dark"] table.table thead th{ background:#0f1320; border-bottom:
 html[data-theme="dark"] table.table tbody tr:nth-child(odd){ background:#111827; }
 html[data-theme="dark"] table.table tbody tr:nth-child(even){ background:#0f1320; }
 html[data-theme="dark"] .total-highlight{ color:var(--primary); }
+
+/* Corrige fundo branco do summary/details no Dark */
+html[data-theme="dark"] details,
+html[data-theme="dark"] summary {
+  background: var(--card) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+html[data-theme="dark"] summary:hover { cursor:pointer; background:#1c2233; }
