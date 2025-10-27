@@ -4,10 +4,21 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Conversor de Peças por Peso</title>
+
+  <!-- Temas (mantém seus 3 css) -->
   <link rel="stylesheet" href="themes/theme-dark.css" />
   <link rel="stylesheet" href="themes/theme-light.css" />
   <link rel="stylesheet" href="themes/theme-excel.css" />
-  <script>(function(){try{var t=localStorage.getItem('theme')||'dark';document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+
+  <script>
+    (function(){
+      try{
+        const t = localStorage.getItem('theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', t);
+      }catch(e){}
+    })();
+  </script>
+
   <style>
     body{font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin:0}
     header.topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 18px}
@@ -29,7 +40,6 @@
     .btn.outline{background:transparent;border:1px solid currentColor}
     .btn.danger{background:transparent;border:1px solid currentColor}
     .btn.block{width:100%}
-    details summary{font-weight:600}
     .table-wrap{overflow:auto}
     table.table{width:100%;border-collapse:separate;border-spacing:0}
     table.table th, table.table td{padding:10px 12px;white-space:nowrap}
@@ -37,12 +47,11 @@
     table.table th.center, table.table td.center{text-align:center}
     table.table th.ppm, table.table td.ppm{text-align:right}
     .right{text-align:right}
-    .result{display:flex;flex-wrap:wrap;gap:18px;margin-top:10px}
-    .result div{display:flex;gap:8px;align-items:baseline}
     .total-highlight{margin:10px 0;font-weight:700}
-    footer.footer{padding:16px;text-align:center;opacity:.8}
     .hide{display:none !important}
   </style>
+
+  <!-- SheetJS -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
@@ -56,10 +65,11 @@
   </header>
 
   <main class="container">
+    <!-- CADASTRO -->
     <section class="card">
       <div class="card-head">
         <h2>Cadastro de Materiais</h2>
-        <p class="muted">Importe a planilha <strong>CODIGO | DESCRIÇÃO | PESO POR METRO</strong>. Após importar, a área e a listagem ficam ocultas.</p>
+        <p class="muted">Importe a planilha <strong>CODIGO | DESCRIÇÃO | PESO POR METRO | GRUPO</strong>. Após importar, a área e a listagem ficam ocultas.</p>
       </div>
 
       <details id="importArea" open>
@@ -79,9 +89,9 @@
       <form id="material-form" class="grid grid-4">
         <div class="field"><label>Código</label><input id="matCodigo" type="text" /></div>
         <div class="field"><label>Descrição</label><input id="matName" type="text" /></div>
-        <div class="field"><label>Grupo</label><input id="matGrupo" type="text" /></div>
+        <div class="field"><label>Grupo</label><input id="matGrupo" type="text" placeholder="Ex.: 1004" /></div>
         <div class="field"><label>Peso por metro (kg/m ou kg/m²)</label><input id="matPpm" type="text" inputmode="decimal" /></div>
-        <div class="field actions">
+        <div class="field actions" style="grid-column:1/-1">
           <button type="submit" class="btn primary">Adicionar</button>
           <button type="button" id="btnClear" class="btn outline">Limpar</button>
         </div>
@@ -94,13 +104,22 @@
             <button id="btnExcluirTudo" class="btn danger">Excluir tudo</button>
           </div>
           <table class="table" id="material-table">
-            <thead><tr><th>Código</th><th>Descrição</th><th class="ppm">Peso (kg/m)</th><th class="center">Ações</th></tr></thead>
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>Descrição</th>
+                <th>Grupo</th>
+                <th class="ppm">Peso (kg/m)</th>
+                <th class="center">Ações</th>
+              </tr>
+            </thead>
             <tbody></tbody>
           </table>
         </div>
       </details>
     </section>
 
+    <!-- CÁLCULO RÁPIDO -->
     <section class="card">
       <div class="card-head"><h2>Cálculo Rápido</h2></div>
       <div class="grid grid-4" style="margin-bottom:8px">
@@ -111,15 +130,16 @@
         <div class="field"><label>Comprimento (m)</label><input id="inComprimento" type="text" inputmode="decimal" /></div>
         <div class="field" id="larguraField"><label>Largura (m)</label><input id="inLargura" type="text" inputmode="decimal" /></div>
         <div class="field"><label>Peças</label><input id="inPecas" type="number" /></div>
-        <div class="field"><label>&nbsp;</label><button id="btnCalcUnico" class="btn primary block">Calcular</button></div>
+        <div class="field" style="grid-column:1/-1"><button id="btnCalcUnico" class="btn primary">Calcular</button></div>
       </div>
-      <div class="result" id="resUnico">
-        <div><span>Peso por metro:</span><strong id="ppmView">—</strong></div>
-        <div><span>Peso do comprimento:</span><strong id="pesoComprimentoView">—</strong></div>
-        <div><span>Peso total (peças):</span><strong id="pesoTotalView">—</strong></div>
+      <!-- Resultado LIMPO (sem "peso por metro") -->
+      <div class="grid grid-4" style="margin-top:6px">
+        <div class="field"><strong>Peso do comprimento:</strong><div id="pesoComprimentoView">—</div></div>
+        <div class="field"><strong>Peso total (peças):</strong><div id="pesoTotalView">—</div></div>
       </div>
     </section>
 
+    <!-- FARDOS -->
     <section class="card">
       <div class="card-head"><h2>Cálculo por Fardos</h2></div>
       <div class="grid grid-4" style="margin-bottom:8px">
@@ -128,25 +148,40 @@
       <div class="grid grid-4">
         <div class="field"><label>Material</label><select id="selMaterialFardo"></select></div>
         <div class="field"><label>Qtd Fardos</label><input id="inQtdFardos" type="number" /></div>
-        <div class="field"><label>&nbsp;</label><button id="btnGerarFardos" class="btn outline">Gerar</button></div>
+        <div class="field"><label>&nbsp;</label><button id="btnGerarFardos" class="btn primary">Gerar</button></div>
         <div class="field"><label>&nbsp;</label><button id="btnLimparFardos" class="btn danger">Limpar</button></div>
       </div>
+
       <div class="total-highlight" id="totalHighlight">Total geral: 0,000 kg</div>
 
       <div class="table-wrap">
         <table class="table" id="fardos-table">
-          <thead><tr><th>#</th><th>Comp. (m)</th><th class="col-larg">Larg. (m)</th><th>Peças</th><th>Peso (kg)</th></tr></thead>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Comp. (m)</th>
+              <th class="col-larg">Larg. (m)</th>
+              <th>Peças</th>
+              <th>Peso (kg)</th>
+            </tr>
+          </thead>
           <tbody></tbody>
-          <tfoot><tr><td colspan="4" class="right"><strong>Total</strong></td><td><strong id="fardosTotal">0,000</strong></td></tr></tfoot>
+          <tfoot>
+            <tr><td colspan="4" class="right"><strong>Total</strong></td><td><strong id="fardosTotal">0,000</strong></td></tr>
+          </tfoot>
         </table>
       </div>
+
       <div class="field actions" style="justify-content:flex-end;margin-top:10px">
         <button id="btnExportExcel" class="btn outline">Exportar Excel</button>
       </div>
     </section>
   </main>
 
-  <footer class="footer"><small>v3.3 — Temas: Claro / Dark / Excel | Chapas por m² | Exportar Excel</small></footer>
+  <footer class="footer" style="padding:16px;opacity:.8;text-align:center">
+    <small>v3.4 — Grupos m² | UI limpa | Export Excel EX1</small>
+  </footer>
+
   <script src="script.js"></script>
 </body>
 </html>
