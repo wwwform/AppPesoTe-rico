@@ -1,23 +1,2 @@
-html[data-theme="light"] {
-  --bg: #f6f7fb;
-  --card: #ffffff;
-  --text: #0f172a;
-  --muted: #475569;
-  --primary: #2563eb;
-  --border: #e2e8f0;
-  --accent: #0ea5e9;
-  --danger: #dc2626;
-}
-html[data-theme="light"] body{ background:var(--bg); color:var(--text); }
-html[data-theme="light"] header.topbar{ background:#ffffff; border-bottom:1px solid var(--border); }
-html[data-theme="light"] .theme-btn{ color:var(--muted); }
-html[data-theme="light"] .theme-btn:hover{ color:var(--primary); transform:translateY(-1px); }
-html[data-theme="light"] .card{ background:var(--card); border:1px solid var(--border); box-shadow:0 10px 20px rgba(2,6,23,.05); }
-html[data-theme="light"] input, select{ background:#fff; color:var(--text); border-color:var(--border); }
-html[data-theme="light"] .btn.primary{ background:var(--primary); color:#fff; }
-html[data-theme="light"] .btn.outline{ color:var(--text); border-color:var(--border); }
-html[data-theme="light"] .btn.danger{ color:var(--danger); border-color:var(--danger); }
-html[data-theme="light"] table.table thead th{ background:#f1f5f9; border-bottom:1px solid var(--border); }
-html[data-theme="light"] table.table tbody tr:nth-child(odd){ background:#ffffff; }
-html[data-theme="light"] table.table tbody tr:nth-child(even){ background:#f8fafc; }
-html[data-theme="light"] .total-highlight{ color:var(--primary); }
+429: Too Many Requests
+For more on scraping GitHub and how it may affect your rights, please review our Terms of Service (https://docs.github.com/en/site-policy/github-terms/github-terms-of-service).
