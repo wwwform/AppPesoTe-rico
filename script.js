@@ -14,14 +14,19 @@
   });
 })();
 
-// ===== Storage =====
+// ===== Storage / Utils =====
 const LS_KEY = 'materiais_ppm_v3';
 const $ = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 
-function loadMaterials(){ try{return JSON.parse(localStorage.getItem(LS_KEY))||[]}catch{return[]}};
+function loadMaterials(){ try{return JSON.parse(localStorage.getItem(LS_KEY))||[]}catch{return[]} }
 function saveMaterials(arr){ localStorage.setItem(LS_KEY, JSON.stringify(arr)); }
 let materials = loadMaterials();
+
+// >>> EDITE AQUI <<<
+// Quais grupos devem ser calculados em m² (usar campo Largura)?
+// Use strings, exatamente como vêm na planilha/cadastro (ex.: "1004").
+const GROUPS_M2 = new Set(['1004','1005','1006', '1018','1019','1020']);
 
 // ===== Helpers =====
 function parseBR_num(s){
@@ -32,12 +37,14 @@ function parseBR_num(s){
   return Number.isFinite(n)?n:0;
 }
 function fmtBR3(n){ return Number(n).toLocaleString('pt-BR',{minimumFractionDigits:3,maximumFractionDigits:3}); }
-function isChapa(name){
-  const s = String(name||'').trim().toUpperCase();
-  return /^CH(\s|#)|^CHAPA/.test(s);
+
+// Nova regra: é m² quando o GRUPO estiver na lista
+function isM2(material){
+  const g = (material?.group ?? '').toString().trim();
+  return g && GROUPS_M2.has(g);
 }
 
-// IMPORTAÇÃO EXCEL
+// ===== Importação Excel =====
 function importExcel(){
   const file = $('#fileExcel').files[0];
   if(!file) return alert('Selecione o Excel.');
@@ -54,7 +61,9 @@ function importExcel(){
         const row = rows[r]; if(!row||!row.length) continue;
         const code = String(row[0]||'').trim();
         const name = String(row[1]||'').trim();
-        const raw  = row[2];
+        const raw  = row[2];              // peso por metro
+        const group = String(row[3]||'').trim(); // GRUPO (opcional)
+
         if(!name || raw==='') continue;
 
         let ppmDisplay = '';
@@ -62,16 +71,19 @@ function importExcel(){
 
         if(typeof raw === 'number'){
           ppm = raw;
-          ppmDisplay = raw.toLocaleString('pt-BR',{
-            minimumFractionDigits:3, maximumFractionDigits:3
-          });
+          ppmDisplay = raw.toLocaleString('pt-BR',{minimumFractionDigits:3, maximumFractionDigits:3});
         } else {
           ppmDisplay = String(raw).trim();
           ppm = parseBR_num(ppmDisplay);
         }
         if(!(ppm>0)) continue;
 
-        imported.push({ id:crypto.randomUUID(), code, name, ppm, ppmDisplay, source:'excel' });
+        imported.push({
+          id: crypto.randomUUID(),
+          code, name, ppm, ppmDisplay,
+          group,               // <<<< salva o grupo
+          source:'excel'
+        });
       }
 
       materials = [...imported, ...materials];
@@ -87,7 +99,7 @@ function importExcel(){
   reader.readAsArrayBuffer(file);
 }
 
-// RENDER TABELA
+// ===== Renderização =====
 function displayPPM(m){ return m.ppmDisplay||''; }
 
 function renderMaterialTable(){
@@ -98,6 +110,7 @@ function renderMaterialTable(){
     tr.innerHTML=`
       <td>${m.code||''}</td>
       <td>${m.name||''}</td>
+      <td>${m.group||''}</td>
       <td class="ppm">${displayPPM(m)}</td>
       <td class="center">
         <button class="btn outline" data-edit="${m.id}">Editar</button>
@@ -110,6 +123,7 @@ function renderMaterialTable(){
     const m = materials.find(x=>x.id===b.dataset.edit);
     $('#matCodigo').value=m.code||'';
     $('#matName').value=m.name||'';
+    $('#matGrupo').value=m.group||'';
     $('#matPpm').value=m.ppmDisplay||'';
     $('#material-form').dataset.editing=m.id;
     $('#material-form button[type="submit"]').textContent='Salvar';
@@ -132,20 +146,23 @@ function renderMaterialSelects(){
     sorted.forEach(m=>{
       const opt=document.createElement('option');
       opt.value=m.id;
-      opt.textContent=`${m.code} — ${m.name} — ${displayPPM(m)} kg/m`;
+      // exibe grupo para facilitar conferência
+      const suf = isM2(m) ? 'kg/m²' : 'kg/m';
+      opt.textContent=`${m.code} — ${m.name} — ${displayPPM(m)} ${suf} — [${m.group||'-'}]`;
       sel.appendChild(opt);
     });
   });
   updateUIForMaterial();
 }
 
-// CADASTRO MANUAL
+// ===== Cadastro manual =====
 function setupForm(){
   const form=$('#material-form');
   form.onsubmit=e=>{
     e.preventDefault();
     const code=$('#matCodigo').value.trim();
     const name=$('#matName').value.trim();
+    const group=$('#matGrupo').value.trim();
     const ppmDisplay=$('#matPpm').value.trim();
     const ppm=parseBR_num(ppmDisplay);
 
@@ -155,14 +172,11 @@ function setupForm(){
     const editing=form.dataset.editing;
     if(editing){
       const i=materials.findIndex(m=>m.id===editing);
-      materials[i].code=code;
-      materials[i].name=name;
-      materials[i].ppm=ppm;
-      materials[i].ppmDisplay=ppmDisplay;
+      Object.assign(materials[i], { code, name, group, ppm, ppmDisplay });
       delete form.dataset.editing;
       form.querySelector('button[type="submit"]').textContent='Adicionar';
     } else {
-      materials.unshift({id:crypto.randomUUID(),code,name,ppm,ppmDisplay,source:'manual'});
+      materials.unshift({id:crypto.randomUUID(),code,name,group,ppm,ppmDisplay,source:'manual'});
     }
     saveMaterials(materials);
     form.reset();
@@ -193,41 +207,37 @@ function setupForm(){
   };
 }
 
-// === UI de Chapa / Não-chapa ===
-function currentMaterial(){
-  return materials.find(x=>x.id===$('#selMaterial').value) || null;
-}
-function currentMaterialFardos(){
-  return materials.find(x=>x.id===$('#selMaterialFardo').value) || null;
-}
+// ===== UI m² / m =====
+function currentMaterial(){ return materials.find(x=>x.id===$('#selMaterial').value) || null; }
+function currentMaterialFardos(){ return materials.find(x=>x.id===$('#selMaterialFardo').value) || null; }
+
 function updateUIForMaterial(){
   const m = currentMaterial();
-  const chapa = m ? isChapa(m.name) : false;
+  const show = isM2(m);
   const lf = $('#larguraField');
-  if(lf) lf.classList.toggle('hide', !chapa);
+  if(lf) lf.classList.toggle('hide', !show);
 
   const table = $('#fardos-table');
-  table.querySelectorAll('th.col-larg').forEach(th=>th.style.display = chapa?'':'none');
-  table.querySelectorAll('td.col-larg').forEach(td=>td.style.display = chapa?'':'none');
+  table.querySelectorAll('th.col-larg').forEach(th=>th.style.display = show?'':'none');
+  table.querySelectorAll('td.col-larg').forEach(td=>td.style.display = show?'':'none');
 }
 function updateUIForMaterialFardos(){
   const m = currentMaterialFardos();
-  const chapa = m ? isChapa(m.name) : false;
+  const show = isM2(m);
   const table = $('#fardos-table');
-  table.querySelectorAll('th.col-larg').forEach(th=>th.style.display = chapa?'':'none');
-  table.querySelectorAll('td.col-larg').forEach(td=>td.style.display = chapa?'':'none');
+  table.querySelectorAll('th.col-larg').forEach(th=>th.style.display = show?'':'none');
+  table.querySelectorAll('td.col-larg').forEach(td=>td.style.display = show?'':'none');
 }
 
-// CÁLCULO ÚNICO
+// ===== Cálculo Rápido =====
 function calcUnico(){
   const m=currentMaterial();
   if(!m) return;
   const comp=parseBR_num($('#inComprimento').value);
   const pecas=parseBR_num($('#inPecas').value);
-  const chapa=isChapa(m.name);
   let pesoComp=0;
 
-  if(chapa){
+  if(isM2(m)){
     const larg=parseBR_num($('#inLargura').value);
     const area = comp * larg;
     pesoComp = area * m.ppm;
@@ -235,7 +245,7 @@ function calcUnico(){
     pesoComp = comp * m.ppm;
   }
   const pesoTotal=pesoComp*pecas;
-  $('#ppmView').textContent=`${displayPPM(m)} ${chapa?'kg/m²':'kg/m'}`;
+  $('#ppmView').textContent=`${displayPPM(m)} ${isM2(m)?'kg/m²':'kg/m'}`;
   $('#pesoComprimentoView').textContent=`${fmtBR3(pesoComp)} kg`;
   $('#pesoTotalView').textContent=`${fmtBR3(pesoTotal)} kg`;
 }
@@ -244,7 +254,7 @@ function setupCalcUnico(){
   $('#selMaterial').onchange=()=>{ updateUIForMaterial(); calcUnico(); };
 }
 
-// FARDOS
+// ===== Fardos =====
 function makeFardoRow(i, showLarg){
   const tr=document.createElement('tr');
   tr.innerHTML=`
@@ -256,9 +266,9 @@ function makeFardoRow(i, showLarg){
   return tr;
 }
 function renderFardosRows(qtd){
-  const tbody=$('#fardos-table tbody'); 
+  const tbody=$('#fardos-table tbody');
   const m = currentMaterialFardos();
-  const showLarg = m ? isChapa(m.name) : false;
+  const showLarg = isM2(m);
   tbody.innerHTML='';
   for(let i=0;i<qtd;i++){
     tbody.appendChild(makeFardoRow(i, showLarg));
@@ -270,13 +280,13 @@ function renderFardosRows(qtd){
 function calcFardos(){
   const m=currentMaterialFardos();
   if(!m) return;
-  const chapa=isChapa(m.name);
   let total=0;
+  const isArea = isM2(m);
   $$('#fardos-table tbody tr').forEach(row=>{
     const comp=parseBR_num(row.querySelector('.f-comp')?.value);
     const pecas=parseBR_num(row.querySelector('.f-pecas')?.value);
     let peso=0;
-    if(chapa){
+    if(isArea){
       const larg=parseBR_num(row.querySelector('.f-larg')?.value);
       const area = comp * larg;
       peso = area * m.ppm * pecas;
@@ -300,7 +310,7 @@ function setupFardos(){
   $('#btnExportExcel').onclick=exportFardosExcel;
 }
 
-// BUSCA POR CÓDIGO
+// ===== Busca por código =====
 function setupSearch(){
   function apply(code){
     const m=materials.find(x=>String(x.code)===String(code));
@@ -314,13 +324,13 @@ function setupSearch(){
   $('#searchCodigoFardos').oninput=e=>apply(e.target.value.trim());
 }
 
-// === EXPORTAÇÃO EXCEL (X2, D3) ===
+// ===== Exportação Excel =====
 function exportFardosExcel(){
   const m=currentMaterialFardos();
   if(!m){ alert('Selecione um material nos fardos.'); return; }
 
-  const chapa = isChapa(m.name);
-  const rows = [['#','Comp (m)'].concat(chapa?['Larg (m)']:[]).concat(['Peças','Peso Unit (kg)','Peso Total (kg)','Código','Descrição','PPM'])];
+  const areaMode = isM2(m);
+  const rows = [['#','Comp (m)'].concat(areaMode?['Larg (m)']:[]).concat(['Peças','Peso Unit (kg)','Peso Total (kg)','Código','Descrição','PPM','Grupo'])];
 
   let totalGeral = 0;
   let idx = 1;
@@ -329,7 +339,7 @@ function exportFardosExcel(){
     const pecas = parseBR_num(tr.querySelector('.f-pecas')?.value);
     let pesoUnit = 0;
     let larg = null;
-    if(chapa){
+    if(areaMode){
       larg = parseBR_num(tr.querySelector('.f-larg')?.value);
       pesoUnit = (comp * larg) * m.ppm;
     }else{
@@ -339,73 +349,59 @@ function exportFardosExcel(){
     totalGeral += pesoTotal;
 
     const base = [idx, comp];
-    if(chapa) base.push(larg);
-    base.push(pecas, pesoUnit, pesoTotal, m.code||'', m.name||'', m.ppm);
+    if(areaMode) base.push(larg);
+    base.push(pecas, pesoUnit, pesoTotal, m.code||'', m.name||'', m.ppm, m.group||'');
     rows.push(base);
     idx++;
   });
 
-  // TOTAL GERAL
   const totalRow = ['TOTAL GERAL'];
-  // pad empty cells until reach Peso Total column
-  const offset = chapa ? 4 : 3; // after #, comp,(larg), peças
+  const offset = areaMode ? 4 : 3;
   for(let i=0;i<offset;i++) totalRow.push('');
-  totalRow.push(totalGeral); // Peso Total (kg)
-  totalRow.push('','',''); // Código, Descrição, PPM vazios
+  totalRow.push(totalGeral);
+  totalRow.push('','','',''); // código, desc, ppm, grupo vazios
   rows.push(totalRow);
 
   const ws = XLSX.utils.aoa_to_sheet(rows);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Fardos');
 
-  // Formatação de número D3 (0,000) — community edition permite 'z' (mask)
-  const range = XLSX.utils.decode_range(ws['!ref']);
-  // Descobrir índices das colunas
-  // 0:#, 1:Comp, (2:Larg), (3|2):Peças, etc.
   function col(c){ return XLSX.utils.encode_col(c); }
   function addr(r,c){ return col(c)+(r+1); }
 
   const colComp = 1;
-  const colLarg = chapa ? 2 : null;
-  const colPecas = chapa ? 3 : 2;
-  const colPesoUnit = chapa ? 4 : 3;
-  const colPesoTotal = chapa ? 5 : 4;
-  const colPPM = chapa ? 8 : 7;
+  const colLarg = areaMode ? 2 : null;
+  const colPecas = areaMode ? 3 : 2;
+  const colPesoUnit = areaMode ? 4 : 3;
+  const colPesoTotal = areaMode ? 5 : 4;
+  const colPPM = areaMode ? 8 : 7;
 
-  for(let r=1; r<=rows.length-2; r++){ // linhas de dados (ignora header=0 e total=last)
-    // comp
+  for(let r=1; r<=rows.length-2; r++){
     const a1 = addr(r, colComp);
     if(ws[a1]) ws[a1].t='n', ws[a1].z='0.000';
-    // larg
-    if(chapa){
+    if(areaMode){
       const a2 = addr(r, colLarg);
       if(ws[a2]) ws[a2].t='n', ws[a2].z='0.000';
     }
-    // peças (inteiro)
     const ap = addr(r, colPecas);
     if(ws[ap]) ws[ap].t='n', ws[ap].z='0';
-    // pesos
     const au = addr(r, colPesoUnit);
     const at = addr(r, colPesoTotal);
     if(ws[au]) ws[au].t='n', ws[au].z='0.000';
     if(ws[at]) ws[at].t='n', ws[at].z='0.000';
-    // ppm
+
     const apm = addr(r, colPPM);
     if(ws[apm]) ws[apm].t='n', ws[apm].z='0.000';
   }
-  // formatar total geral (última linha)
   const last = rows.length-1;
   const atot = addr(last, colPesoTotal);
   if(ws[atot]) ws[atot].t='n', ws[atot].z='0.000';
-
-  // OBS: estilização (cor verde) não é suportada na versão community do SheetJS.
-  // Para destacar, deixamos "TOTAL GERAL" em caps; no Excel você pode aplicar uma Regra Rápida de realce, se desejar.
 
   const filename = `fardos_${(m.code||'material')}.xlsx`.replace(/[^\w.-]+/g,'_');
   XLSX.writeFile(wb, filename);
 }
 
-// INIT
+// ===== Init =====
 function init(){
   renderMaterialTable();
   renderMaterialSelects();
