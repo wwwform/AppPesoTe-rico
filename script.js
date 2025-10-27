@@ -26,7 +26,7 @@ let materials = loadMaterials();
 // >>> EDITE AQUI <<<
 // Quais grupos usam cálculo em m² (mostrar LARGURA e usar comp*larg*ppm)
 const GROUPS_M2 = new Set([
-  '1004', '1005', '1006', '1018', '1019', '1020'    // adicione mais grupos: '2001','3050','8888', ...
+  '1004'    // adicione mais grupos: '2001','3050','8888', ...
 ]);
 
 // ===== Helpers =====
@@ -247,7 +247,7 @@ function calcUnico(){
   const pesoTotal=pesoComp*pecas;
 
   // só mostramos os 2 resultados (sem ppm)
-  //$('#pesoComprimentoView').textContent=`${fmtBR3(pesoComp)} kg`;
+  $('#pesoComprimentoView').textContent=`${fmtBR3(pesoComp)} kg`;
   $('#pesoTotalView').textContent=`${fmtBR3(pesoTotal)} kg`;
 }
 function setupCalcUnico(){
