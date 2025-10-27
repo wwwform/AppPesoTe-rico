@@ -24,9 +24,10 @@ function saveMaterials(arr){ localStorage.setItem(LS_KEY, JSON.stringify(arr)); 
 let materials = loadMaterials();
 
 // >>> EDITE AQUI <<<
-// Quais grupos devem ser calculados em m² (usar campo Largura)?
-// Use strings, exatamente como vêm na planilha/cadastro (ex.: "1004").
-const GROUPS_M2 = new Set(['1004','1005','1006', '1018','1019','1020']);
+// Quais grupos usam cálculo em m² (mostrar LARGURA e usar comp*larg*ppm)
+const GROUPS_M2 = new Set([
+  '1004', '1005', '1006', '1018', '1019', '1020'    // adicione mais grupos: '2001','3050','8888', ...
+]);
 
 // ===== Helpers =====
 function parseBR_num(s){
@@ -38,7 +39,6 @@ function parseBR_num(s){
 }
 function fmtBR3(n){ return Number(n).toLocaleString('pt-BR',{minimumFractionDigits:3,maximumFractionDigits:3}); }
 
-// Nova regra: é m² quando o GRUPO estiver na lista
 function isM2(material){
   const g = (material?.group ?? '').toString().trim();
   return g && GROUPS_M2.has(g);
@@ -81,7 +81,7 @@ function importExcel(){
         imported.push({
           id: crypto.randomUUID(),
           code, name, ppm, ppmDisplay,
-          group,               // <<<< salva o grupo
+          group,
           source:'excel'
         });
       }
@@ -146,9 +146,9 @@ function renderMaterialSelects(){
     sorted.forEach(m=>{
       const opt=document.createElement('option');
       opt.value=m.id;
-      // exibe grupo para facilitar conferência
       const suf = isM2(m) ? 'kg/m²' : 'kg/m';
-      opt.textContent=`${m.code} — ${m.name} — ${displayPPM(m)} ${suf} — [${m.group||'-'}]`;
+      // SELECT2 (limpo, sem grupo)
+      opt.textContent=`${m.code} — ${m.name} — ${displayPPM(m)} ${suf}`;
       sel.appendChild(opt);
     });
   });
@@ -229,7 +229,7 @@ function updateUIForMaterialFardos(){
   table.querySelectorAll('td.col-larg').forEach(td=>td.style.display = show?'':'none');
 }
 
-// ===== Cálculo Rápido =====
+// ===== Cálculo Rápido (visual limpo) =====
 function calcUnico(){
   const m=currentMaterial();
   if(!m) return;
@@ -245,7 +245,8 @@ function calcUnico(){
     pesoComp = comp * m.ppm;
   }
   const pesoTotal=pesoComp*pecas;
-  $('#ppmView').textContent=`${displayPPM(m)} ${isM2(m)?'kg/m²':'kg/m'}`;
+
+  // só mostramos os 2 resultados (sem ppm)
   $('#pesoComprimentoView').textContent=`${fmtBR3(pesoComp)} kg`;
   $('#pesoTotalView').textContent=`${fmtBR3(pesoTotal)} kg`;
 }
@@ -324,13 +325,17 @@ function setupSearch(){
   $('#searchCodigoFardos').oninput=e=>apply(e.target.value.trim());
 }
 
-// ===== Exportação Excel =====
+// ===== Exportação Excel (EX1 completo) =====
 function exportFardosExcel(){
   const m=currentMaterialFardos();
   if(!m){ alert('Selecione um material nos fardos.'); return; }
 
   const areaMode = isM2(m);
-  const rows = [['#','Comp (m)'].concat(areaMode?['Larg (m)']:[]).concat(['Peças','Peso Unit (kg)','Peso Total (kg)','Código','Descrição','PPM','Grupo'])];
+  const rows = [[
+    '#','Comp (m)'
+  ].concat(areaMode?['Larg (m)']:[]).concat([
+    'Peças','Peso Unit (kg)','Peso Total (kg)','Código','Descrição','PPM','Grupo'
+  ])];
 
   let totalGeral = 0;
   let idx = 1;
