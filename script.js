@@ -247,7 +247,7 @@ function calcUnico(){
   const pesoTotal=pesoComp*pecas;
 
   // só mostramos os 2 resultados (sem ppm)
-  $('#pesoComprimentoView').textContent=`${fmtBR3(pesoComp)} kg`;
+  //$('#pesoComprimentoView').textContent=`${fmtBR3(pesoComp)} kg`;
   $('#pesoTotalView').textContent=`${fmtBR3(pesoTotal)} kg`;
 }
 function setupCalcUnico(){
