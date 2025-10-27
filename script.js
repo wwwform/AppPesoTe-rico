@@ -26,7 +26,7 @@ let materials = loadMaterials();
 // >>> EDITE AQUI <<<
 // Quais grupos usam cálculo em m² (mostrar LARGURA e usar comp*larg*ppm)
 const GROUPS_M2 = new Set([
-  '1004'    // adicione mais grupos: '2001','3050','8888', ...
+  '1004', '1005', '1006', '1018', '1019', '1020'    // adicione mais grupos: '2001','3050','8888', ...
 ]);
 
 // ===== Helpers =====
