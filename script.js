@@ -511,8 +511,9 @@ document.addEventListener('DOMContentLoaded', init);
     const bR = qs("#btnCalcUnico"); 
     if(bR) bR.addEventListener("click", ()=> setTimeout(capturaRapido, 0));
 
-    const bF = qs("#btnGerarFardos");
-    if(bF) bF.addEventListener("click", ()=> setTimeout(capturaFardos, 0));
+    const bEX = qs("#btnExportExcel");
+if(bEX) bEX.addEventListener("click", ()=> setTimeout(capturaFardos, 0));
+
 
     bind(); render();
   });
