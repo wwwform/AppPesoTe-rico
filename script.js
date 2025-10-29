@@ -24,12 +24,16 @@ function saveMaterials(arr){ localStorage.setItem(LS_KEY, JSON.stringify(arr)); 
 let materials = loadMaterials();
 
 // >>> EDITE AQUI <<<
-const GROUPS_M2 = new Set(['1004']);
+// Quais grupos usam cálculo em m² (mostrar LARGURA e usar comp*larg*ppm)
+const GROUPS_M2 = new Set([
+  '1004'    // adicione mais grupos: '2001','3050','8888', ...
+]);
 
 // ===== Helpers =====
 function parseBR_num(s){
   if(s===null||s===undefined) return 0;
-  s = String(s).trim().replace(/\./g,'').replace(',','.');
+  s = String(s).trim();
+  s = s.replace(/\./g,'').replace(',','.');
   const n = Number(s);
   return Number.isFinite(n)?n:0;
 }
@@ -57,10 +61,14 @@ function importExcel(){
         const row = rows[r]; if(!row||!row.length) continue;
         const code = String(row[0]||'').trim();
         const name = String(row[1]||'').trim();
-        const raw  = row[2];
-        const group = String(row[3]||'').trim();
+        const raw  = row[2];              // peso por metro
+        const group = String(row[3]||'').trim(); // GRUPO (opcional)
+
         if(!name || raw==='') continue;
-        let ppmDisplay='', ppm=0;
+
+        let ppmDisplay = '';
+        let ppm = 0;
+
         if(typeof raw === 'number'){
           ppm = raw;
           ppmDisplay = raw.toLocaleString('pt-BR',{minimumFractionDigits:3, maximumFractionDigits:3});
@@ -69,7 +77,13 @@ function importExcel(){
           ppm = parseBR_num(ppmDisplay);
         }
         if(!(ppm>0)) continue;
-        imported.push({id:crypto.randomUUID(),code,name,ppm,ppmDisplay,group,source:'excel'});
+
+        imported.push({
+          id: crypto.randomUUID(),
+          code, name, ppm, ppmDisplay,
+          group,
+          source:'excel'
+        });
       }
 
       materials = [...imported, ...materials];
@@ -77,8 +91,8 @@ function importExcel(){
       renderMaterialTable();
       renderMaterialSelects();
 
-      const ia=$('#importArea'); if(ia) ia.open=false;
-      const ct=$('#cadTable'); if(ct) ct.open=false;
+      const ia = $('#importArea'); if(ia) ia.open=false;
+      const ct = $('#cadTable');  if(ct) ct.open=false;
       alert(`Importados: ${imported.length}`);
     }catch(err){ console.error(err); alert('Erro ao importar.'); }
   };
@@ -89,7 +103,7 @@ function importExcel(){
 function displayPPM(m){ return m.ppmDisplay||''; }
 
 function renderMaterialTable(){
-  const tbody=$('#material-table tbody'); if(!tbody) return;
+  const tbody = $('#material-table tbody'); if(!tbody) return;
   tbody.innerHTML='';
   materials.forEach(m=>{
     const tr=document.createElement('tr');
@@ -133,6 +147,7 @@ function renderMaterialSelects(){
       const opt=document.createElement('option');
       opt.value=m.id;
       const suf = isM2(m) ? 'kg/m²' : 'kg/m';
+      // SELECT2 (limpo, sem grupo)
       opt.textContent=`${m.code} — ${m.name} — ${displayPPM(m)} ${suf}`;
       sel.appendChild(opt);
     });
@@ -150,8 +165,10 @@ function setupForm(){
     const group=$('#matGrupo').value.trim();
     const ppmDisplay=$('#matPpm').value.trim();
     const ppm=parseBR_num(ppmDisplay);
+
     if(!name) return alert('Informe a descrição.');
     if(!(ppm>0)) return alert('PPM inválido.');
+
     const editing=form.dataset.editing;
     if(editing){
       const i=materials.findIndex(m=>m.id===editing);
@@ -212,18 +229,24 @@ function updateUIForMaterialFardos(){
   table.querySelectorAll('td.col-larg').forEach(td=>td.style.display = show?'':'none');
 }
 
-// ===== Cálculo Rápido =====
+// ===== Cálculo Rápido (visual limpo) =====
 function calcUnico(){
   const m=currentMaterial();
   if(!m) return;
   const comp=parseBR_num($('#inComprimento').value);
   const pecas=parseBR_num($('#inPecas').value);
   let pesoComp=0;
+
   if(isM2(m)){
     const larg=parseBR_num($('#inLargura').value);
-    pesoComp = comp * larg * m.ppm;
-  }else{ pesoComp = comp * m.ppm; }
+    const area = comp * larg;
+    pesoComp = area * m.ppm;
+  }else{
+    pesoComp = comp * m.ppm;
+  }
   const pesoTotal=pesoComp*pecas;
+
+  // só mostramos os 2 resultados (sem ppm)
   $('#pesoComprimentoView').textContent=`${fmtBR3(pesoComp)} kg`;
   $('#pesoTotalView').textContent=`${fmtBR3(pesoTotal)} kg`;
 }
@@ -248,22 +271,29 @@ function renderFardosRows(qtd){
   const m = currentMaterialFardos();
   const showLarg = isM2(m);
   tbody.innerHTML='';
-  for(let i=0;i<qtd;i++){ tbody.appendChild(makeFardoRow(i, showLarg)); }
+  for(let i=0;i<qtd;i++){
+    tbody.appendChild(makeFardoRow(i, showLarg));
+  }
   tbody.querySelectorAll('input').forEach(inp=>inp.addEventListener('input',calcFardos));
-  updateUIForMaterialFardos(); calcFardos();
+  updateUIForMaterialFardos();
+  calcFardos();
 }
 function calcFardos(){
   const m=currentMaterialFardos();
   if(!m) return;
-  let total=0; const isArea=isM2(m);
+  let total=0;
+  const isArea = isM2(m);
   $$('#fardos-table tbody tr').forEach(row=>{
     const comp=parseBR_num(row.querySelector('.f-comp')?.value);
     const pecas=parseBR_num(row.querySelector('.f-pecas')?.value);
     let peso=0;
     if(isArea){
       const larg=parseBR_num(row.querySelector('.f-larg')?.value);
-      peso = comp*larg*m.ppm*pecas;
-    }else{ peso = comp*m.ppm*pecas; }
+      const area = comp * larg;
+      peso = area * m.ppm * pecas;
+    }else{
+      peso = comp * m.ppm * pecas;
+    }
     row.querySelector('.f-peso').textContent=fmtBR3(peso);
     total+=peso;
   });
@@ -281,14 +311,15 @@ function setupFardos(){
   $('#btnExportExcel').onclick=exportFardosExcel;
 }
 
-// ===== Busca =====
+// ===== Busca por código =====
 function setupSearch(){
   function apply(code){
     const m=materials.find(x=>String(x.code)===String(code));
     if(!m) return;
     $('#selMaterial').value=m.id;
     $('#selMaterialFardo').value=m.id;
-    updateUIForMaterial(); updateUIForMaterialFardos();
+    updateUIForMaterial();
+    updateUIForMaterialFardos();
   }
   $('#searchCodigo').oninput=e=>apply(e.target.value.trim());
   $('#searchCodigoFardos').oninput=e=>apply(e.target.value.trim());
@@ -333,7 +364,7 @@ function exportFardosExcel(){
   const offset = areaMode ? 4 : 3;
   for(let i=0;i<offset;i++) totalRow.push('');
   totalRow.push(totalGeral);
-  totalRow.push('','','','');
+  totalRow.push('','','',''); // código, desc, ppm, grupo vazios
   rows.push(totalRow);
 
   const ws = XLSX.utils.aoa_to_sheet(rows);
@@ -371,14 +402,19 @@ function exportFardosExcel(){
   const atot = addr(last, colPesoTotal);
   if(ws[atot]) ws[atot].t='n', ws[atot].z='0.000';
 
-  XLSX.writeFile(wb, `fardos_${(m.code||'material')}.xlsx`.replace(/[^\w.-]+/g,'_'));
+  const filename = `fardos_${(m.code||'material')}.xlsx`.replace(/[^\w.-]+/g,'_');
+  XLSX.writeFile(wb, filename);
 }
 
 // ===== Init =====
 function init(){
-  renderMaterialTable(); renderMaterialSelects();
-  setupForm(); setupCalcUnico(); setupFardos(); setupSearch();
-  const ct=$('#cadTable'); if(ct) ct.open=false;
+  renderMaterialTable();
+  renderMaterialSelects();
+  setupForm();
+  setupCalcUnico();
+  setupFardos();
+  setupSearch();
+  const ct = $('#cadTable'); if(ct) ct.open=false;
   updateUIForMaterial(); updateUIForMaterialFardos();
 }
 document.addEventListener('DOMContentLoaded', init);
@@ -495,27 +531,82 @@ document.addEventListener('DOMContentLoaded', init);
     if(Number.isFinite(entry.pesoTotal) && entry.pesoTotal>0){ Store.add(entry); render(); }
   }
 
-  // Coleta Fardos (NX2b)
+  // Coleta Fardos (no Exportar EX1, após usuário preencher valores)
   function capturaFardos(){
     const rows = qsa("#fardos-table tbody tr");
     const itens = rows.map((tr,idx)=>{
       const tds = qsa("td", tr).map(td=>td.textContent.trim());
-      return { index: idx+1, comp: brNum(tds[1]), larg: brNum(tds[2]), pecas: brNum(tds[3]), peso: brNum(tds[4]) };
+      // # | comp | larg | peças | peso
+      const comp = brNum(tds[1]||"");
+      const larg = brNum(tds[2]||"");
+      const pecas= brNum(tds[3]||"");
+      const peso = brNum(tds[4]||"");
+      return { index: idx+1, comp, larg, pecas, peso };
     });
     const total = brNum(qs("#fardosTotal")?.textContent||"");
     const entry = { data: now(), tipo:"Cálculo por Fardos", pesoTotal: Number(total||0), itens };
     if(Number.isFinite(entry.pesoTotal) && entry.pesoTotal>0){ Store.add(entry); render(); }
   }
 
+  // ===== Impressão (estilo + conteúdo) =====
+  function setPrint(style, mode){
+    document.documentElement.setAttribute("data-print-style", style);  // min | excel | amoled
+    document.documentElement.setAttribute("data-print-content", mode); // A | B | C
+    window.print();
+  }
+
+  // ===== Helpers de injeção de botões =====
+  function insertAfter(newNode, referenceNode){
+    referenceNode.parentNode.insertBefore(newNode, referenceNode.nextSibling);
+  }
+  function makeBtn(id, label, title){
+    const b=document.createElement('button');
+    b.id=id; b.type='button'; b.textContent=label; b.title=title;
+    b.className='btn print-btn';
+    return b;
+  }
+
   window.addEventListener("DOMContentLoaded", ()=>{
+    // Rápido: captura ao calcular
     const bR = qs("#btnCalcUnico"); 
     if(bR) bR.addEventListener("click", ()=> setTimeout(capturaRapido, 0));
 
+    // Fardos: captura ao exportar (após usuário preencher)
     const bEX = qs("#btnExportExcel");
-if(bEX) bEX.addEventListener("click", ()=> setTimeout(capturaFardos, 0));
+    if(bEX) bEX.addEventListener("click", ()=> setTimeout(capturaFardos, 0));
 
+    // Injetar botões de impressão NA TELA PRINCIPAL (ao lado do Exportar EX1)
+    if(bEX && !$("#btnPrintMin")){
+      const p1 = makeBtn("btnPrintMin","🧾","Impressão Minimalista");
+      const p2 = makeBtn("btnPrintExcel","📊","Impressão Estilo Planilha");
+      const p3 = makeBtn("btnPrintAmoled","🌙","Impressão AMOLED");
+      insertAfter(p1, bEX); insertAfter(p2, p1); insertAfter(p3, p2);
 
-    bind(); render();
+      p1.onclick = ()=> setPrint("min","B");    // cálculo + cabeçalho
+      p2.onclick = ()=> setPrint("excel","B");  // cálculo + cabeçalho
+      p3.onclick = ()=> setPrint("amoled","B"); // cálculo + cabeçalho
+    }
+
+    // Injetar botões de impressão DENTRO DO MODAL DO HISTÓRICO
+    const modalH = qs("#modalHistorico");
+    if(modalH && !$("#btnPrintMin_H")){
+      // tenta header -> senão, usa o topo do modal
+      const header = modalH.querySelector(".modal-header") || modalH;
+      const wrap = document.createElement("div");
+      wrap.className = "print-group";
+      const h1 = makeBtn("btnPrintMin_H","🧾","Imprimir (Minimalista) - Histórico");
+      const h2 = makeBtn("btnPrintExcel_H","📊","Imprimir (Excel) - Histórico");
+      const h3 = makeBtn("btnPrintAmoled_H","🌙","Imprimir (AMOLED) - Histórico");
+      wrap.appendChild(h1); wrap.appendChild(h2); wrap.appendChild(h3);
+      header.appendChild(wrap);
+
+      h1.onclick = ()=> setPrint("min","C");    // histórico detalhado
+      h2.onclick = ()=> setPrint("excel","C");  // histórico detalhado
+      h3.onclick = ()=> setPrint("amoled","C"); // histórico detalhado
+    }
+
+    bind();
+    render();
   });
 
   // API pública (opcional)
