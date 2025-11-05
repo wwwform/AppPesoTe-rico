@@ -24,7 +24,7 @@ function saveMaterials(arr){ localStorage.setItem(LS_KEY, JSON.stringify(arr)); 
 let materials = loadMaterials();
 
 // >>> EDITE AQUI <<<
-const GROUPS_M2 = new Set(['1004']);
+const GROUPS_M2 = new Set(['1004', '1005', '1006', '1018', '1019', '1020']);
 
 // ===== Helpers =====
 function parseBR_num(s){
